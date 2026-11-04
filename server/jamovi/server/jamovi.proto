@@ -475,6 +475,11 @@ message StoreResponse {
     string message = 2;
 }
 
+message ColumnSummary {
+    int32 n = 1;
+    repeated int32 counts = 2;
+}
+
 message VariableLevel {
     string label = 1;
     int32 value = 2;
@@ -567,6 +572,7 @@ message DataSetSchema {
         bool dataChanged = 24;
         repeated string missingValues = 25;
         int32 outputAnalysisId = 26;
+        ColumnSummary summary = 27;
     }
 
     message TransformSchema {

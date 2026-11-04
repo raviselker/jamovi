@@ -57,6 +57,11 @@ export enum ColumnType {
     OUTPUT = 'output',
 }
 
+export interface ColumnSummary {
+    n: number;
+    counts: number[];  // per level, or histogram bins
+}
+
 export interface VariableLevel {
     label: string;
     value: number;
@@ -128,6 +133,7 @@ export interface Column {
     dataChanged: boolean;
     missingValues: string[];
     outputAnalysisId: number;
+    summary: ColumnSummary;
 }
 
 export interface SortKey {
@@ -1486,6 +1492,7 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
         column.parentId = columnPB.parentId;
         column.missingValues = columnPB.missingValues;
         column.outputAnalysisId = columnPB.outputAnalysisId;
+        column.summary = columnPB.summary;
 
         let editedCellRanges = new Array(columnPB.editedCellRanges.length);
         for (let i = 0; i < editedCellRanges.length; i++) {

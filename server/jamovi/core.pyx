@@ -23,6 +23,9 @@ from enum import Enum
 ctypedef char* charptr
 
 cdef extern from "column.h":
+    ctypedef struct CSummary "Summary":
+        int n
+        vector[int] counts
     cdef cppclass CLevelData "LevelData":
         CLevelData()
         CLevelData(int value, const char *label, bool pinned)
@@ -309,6 +312,7 @@ cdef extern from "columnw.h":
         bool trimLevels() except +
         void changeDMType(CDataType dataType, CMeasureType measureType) except +
         bool shouldTreatAsMissing(int index) except +
+        CSummary summary() except +
 
     ctypedef enum CColumnType "ColumnType::Type":
         CColumnTypeNone       "ColumnType::NONE"
@@ -584,6 +588,10 @@ cdef class Column:
     @property
     def row_count_ex_filtered(self):
         return self._this.rowCountExFiltered()
+
+    @property
+    def summary(self):
+        return self._this.summary()
 
     @property
     def changes(self):

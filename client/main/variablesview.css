@@ -60,13 +60,13 @@
 }
 
 .jmv-variables-body .msg {
-    grid-area: 2 / 2 / span 1 / span 3;
+    grid-area: 2 / 2 / span 1 / span 5;
     margin: 10px;
 }
 
 .jmv-variables-body {
     display: grid;
-    grid-template-columns: min-content min-content minmax(70px, max-content) auto;
+    grid-template-columns: min-content min-content minmax(70px, max-content) auto min-content min-content;
     background-color: white;
     scroll-margin-top: 5rem;
 }
@@ -93,6 +93,85 @@
 
 .jmv-variables-body .cell {
 
+}
+
+.jmv-variables-body .cell .missing {
+    margin-inline-start: auto;
+    text-align: end;
+    padding-inline: 6px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.jmv-variables-body .cell .plot {
+    width: 120px;
+    height: 30px;
+    margin-block: 3px;
+}
+
+.jmv-variables-body .cell .missing-line {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.jmv-variables-body .cell .missing-bar {
+    width: 32px;
+    height: 6px;
+    border-radius: 3px;
+    background-color: #e6e6e6;
+    overflow: hidden;
+}
+
+.jmv-variables-body .cell .missing-bar > div {
+    height: 100%;
+    background-color: #c96b5b;
+}
+
+.jmv-variables-body .cell .missing-percent {
+    min-width: 3em;
+    text-align: end;
+}
+
+.jmv-variables-body .cell .missing-codes {
+    font-size: 85%;
+    line-height: 1.2;
+    color: #888;
+    text-align: end;
+}
+
+.jmv-variables-body .cell .plot svg {
+    display: block;
+    fill: #6b9de8;
+}
+
+.jmv-variables-body .cell[data-measuretype="continuous"] .plot svg {
+    fill: #f1bf63;
+}
+
+.jmv-variables-body .cell .plot .baseline {
+    fill: #d5d5d5;
+}
+
+/* rows are as tall as the plot, so their contents are centred */
+.jmv-variables-body .cell:not(.column-header) {
+    display: flex;
+    align-items: center;
+}
+
+.jmv-variables-body .cell:not(.column-header) > .text {
+    flex: 1;
+    min-width: 0;
+    min-height: 23px;
+}
+
+.jmv-variables-body .cell:not(.column-header) > .measure-box {
+    height: 23px;
+}
+
+.jmv-variables-body .cell .missing.none {
+    color: #999;
 }
 
 .jmv-variables-body .cell .text[contenteditable]:hover {

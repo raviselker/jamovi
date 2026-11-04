@@ -21,6 +21,8 @@ type VaraibleRow = {
     $select: HTMLInputElement;
     $name: HTMLDivElement;
     $description: HTMLDivElement;
+    $missing: HTMLDivElement;
+    $plot: HTMLDivElement;
     $editableTexts: NodeListOf<HTMLDivElement>;
     $dot: HTMLElement;
     nameReadOnly: boolean;
@@ -61,6 +63,7 @@ class VariablesView extends HTMLElement  implements DataSetView {
     $search: HTMLInputElement;
     $searchClear: HTMLElement;
     $searchCount: HTMLElement;
+    $sort: HTMLSelectElement;
 
     searchingInProgress: NodeJS.Timeout;
     _selectionChanging: NodeJS.Timeout;
@@ -100,6 +103,7 @@ class VariablesView extends HTMLElement  implements DataSetView {
 
         this.model.on('dataSetLoaded', this._dataSetLoaded, this);
         this.model.on('columnsChanged', event => this._columnsChanged(event));
+        this.model.on('change:rowCount', event => this.rows.forEach(row => this._updateSummary(row)));
         this.model.on('columnsDeleted', event => this._columnsDeleted(event));
         this.model.on('columnsInserted', event => this._columnsInserted(event));
         this.model.on('columnsHidden', event => this._columnsDeleted(event));
@@ -428,6 +432,9 @@ class VariablesView extends HTMLElement  implements DataSetView {
         let $desc = h('div', { role: 'none', class: 'description text', 'data-property': 'description', 'data-columnindex': column.index.toString(), tabindex: '0' }, column.description);
         this._addTextEvents($desc);
 
+        let $plot = h('div', { role: 'none', class: 'plot' });
+        let $missing = h('div', { role: 'none', class: 'missing' });
+
         let colNo = column.index;
 
         let editingIds = this.model.get('editingVar');
@@ -439,6 +446,8 @@ class VariablesView extends HTMLElement  implements DataSetView {
         this.$body.append(this._applyColumnData(this._createCell($measureType, row, 2, '', true), column, colNo));
         this.$body.append(this._applyColumnData(this._createCell($name, row, 3, '', true), column, colNo));
         this.$body.append(this._applyColumnData(this._createCell($desc, row, 4, '', true), column, colNo));
+        this.$body.append(this._applyColumnData(this._createCell($plot, row, 5, '', true), column, colNo));
+        this.$body.append(this._applyColumnData(this._createCell($missing, row, 6, '', true), column, colNo));
 
         let $elements = this.querySelectorAll<HTMLElement>(`.cell[data-index="${colNo}"]`);
         let $editableTexts = this.querySelectorAll<HTMLDivElement>(`.cell[data-index="${colNo}"] .text:not(.readonly)`);
@@ -450,10 +459,98 @@ class VariablesView extends HTMLElement  implements DataSetView {
             $select: $select,
             $name: $name,
             $description: $desc,
+            $missing: $missing,
+            $plot: $plot,
             $editableTexts: $editableTexts,
             $dot: $dot,
             nameReadOnly: column.columnType === 'filter'
         };
+        this._updateSummary(this.rows[colNo]);
+    }
+
+    _hasSummary(column: Column) {
+        return column.summary && column.columnType !== 'filter' && column.columnType !== 'none' && this.model.attributes.rowCount > 0;
+    }
+
+    _createPlot(column: Column, width: number, height: number) {
+        let counts = column.summary.counts;
+        let max = Math.max(0, ...counts);
+
+        let svg = 'http://www.w3.org/2000/svg';
+        let $svg = document.createElementNS(svg, 'svg');
+        $svg.setAttribute('width', String(width));
+        $svg.setAttribute('height', String(height));
+        $svg.setAttribute('aria-hidden', 'true');
+
+        let $baseline = document.createElementNS(svg, 'rect');
+        $baseline.setAttribute('class', 'baseline');
+        $baseline.setAttribute('y', String(height - 1));
+        $baseline.setAttribute('width', String(width));
+        $baseline.setAttribute('height', '1');
+        $svg.append($baseline);
+
+        // level bars are spaced apart, so they read as separate categories
+        let isLevels = column.measureType !== 'continuous';
+        let step = width / counts.length;
+        let barWidth = Math.max(1, isLevels ? step * 0.7 : step - 1);
+        let offset = isLevels ? (step - barWidth) / 2 : 0;
+
+        counts.forEach((count, i) => {
+            if (count === 0)
+                return;
+
+            // small counts stay visible
+            let barHeight = Math.max(2, Math.round(height * count / max));
+            let $bar = document.createElementNS(svg, 'rect');
+            $bar.setAttribute('x', String(i * step + offset));
+            $bar.setAttribute('y', String(height - barHeight));
+            $bar.setAttribute('width', String(barWidth));
+            $bar.setAttribute('height', String(barHeight));
+            $svg.append($bar);
+        });
+
+        return $svg;
+    }
+
+    _updateSummary(row: VaraibleRow) {
+        if ( ! row)
+            return;
+
+        let column = row.column;
+        let hasSummary = this._hasSummary(column);
+
+        if ( ! hasSummary) {
+            row.$plot.replaceChildren();
+            row.$missing.replaceChildren();
+            row.$missing.removeAttribute('title');
+            return;
+        }
+
+        let s = column.summary;
+
+        // too many levels to tell apart at this size
+        if (Math.max(0, ...s.counts) === 0 || s.counts.length > 50)
+            row.$plot.replaceChildren();
+        else
+            row.$plot.replaceChildren(this._createPlot(column, 120, 30));
+
+        let rowCount = this.model.attributes.rowCount;
+        let missing = rowCount - s.n;
+        let percent = 100 * missing / rowCount;
+        let codes = column.missingValues.map(value => value.replace(/^==\s*/, ''));
+
+        let $bar = h('div', { class: 'missing-bar' }, h('div', { style: `width: ${ percent }%` }));
+        let $percent = h('span', { class: 'missing-percent' }, (percent > 0 && percent < 1) ? '<1%' : `${ Math.round(percent) }%`);
+        let $line = h('div', { class: 'missing-line' }, $bar, $percent);
+        row.$missing.replaceChildren($line);
+        if (codes.length > 0)
+            row.$missing.append(h('div', { class: 'missing-codes' }, codes.join(', ')));
+        row.$missing.classList.toggle('none', missing === 0);
+
+        let title = _('{0} of {1} missing', [ missing, rowCount ]);
+        if (codes.length > 0)
+            title += '\n' + _('Treated as missing: {0}', [ codes.join(', ') ]);
+        row.$missing.setAttribute('title', title);
     }
 
     _updateList() {
@@ -467,6 +564,8 @@ class VariablesView extends HTMLElement  implements DataSetView {
         let $measureTypeHeader = h('div', { style: 'width:10px;' });
         let $nameHeader = h('div', {}, _('Name'));
         let $descHeader = h('div', {}, _('Description'));
+        let $plotHeader = h('div', {}, _('Distribution'));
+        let $missingHeader = h('div', { class: 'missing' }, _('Missing'));
         let $selectHeader = h('input', { type: 'checkbox', class: 'select-header-checkbox' });
 
         $selectHeader.addEventListener('change', (event) => {
@@ -480,6 +579,8 @@ class VariablesView extends HTMLElement  implements DataSetView {
         this.$body.append(this._createCell($measureTypeHeader, 1, 2, 'column-header', false));
         this.$body.append(this._createCell($nameHeader, 1, 3, 'column-header', false));
         this.$body.append(this._createCell($descHeader, 1, 4, 'column-header', false));
+        this.$body.append(this._createCell($plotHeader, 1, 5, 'column-header', false));
+        this.$body.append(this._createCell($missingHeader, 1, 6, 'column-header', false));
 
         let finalColumnCount = 0;
         let row = 2;
@@ -884,6 +985,8 @@ class VariablesView extends HTMLElement  implements DataSetView {
 
                 if (change.transformChanged)
                     this._updateColumnColour(row.column, row.$dot);
+
+                this._updateSummary(row);
             }
         }
     }

@@ -1688,6 +1688,10 @@ class DataSetController:
         column_schema.transform = column.transform
         column_schema.parentId = column.parent_id
         column_schema.outputAnalysisId = column.output_analysis_id
+        summary = column.summary
+        if summary is not None:
+            column_schema.summary.n = summary['n']
+            column_schema.summary.counts[:] = summary['counts']
 
         column_schema.hasLevels = True
 
