@@ -50,6 +50,13 @@ typedef struct
 
 } Level;
 
+typedef struct
+{
+    int n;
+    std::vector<int> counts;
+
+} Summary;
+
 typedef union {
     int i;
     double d;
@@ -152,6 +159,7 @@ public:
     bool trimLevels() const;
     bool hasUnusedLevels() const;
     bool shouldTreatAsMissing(int rowIndex);
+    Summary summary();
     bool shouldTreatAsMissing(const char *sv, const char *sv2);
     bool shouldTreatAsMissing(const char *svalue, int ivalue = INT_MIN, double dvalue = NAN, const char *sv2 = NULL);
 

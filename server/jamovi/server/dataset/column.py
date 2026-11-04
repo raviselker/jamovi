@@ -206,6 +206,11 @@ class Column(Protocol):
 
     @property
     @abstractmethod
+    def summary(self) -> dict:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
     def changes(self):
         raise NotImplementedError
 

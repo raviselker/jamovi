@@ -257,6 +257,10 @@ class DuckColumn(Column):
         return self._dataset.row_count_ex_filtered
 
     @property
+    def summary(self):
+        raise NotImplementedError
+
+    @property
     def changes(self):
         # TODO
         return []

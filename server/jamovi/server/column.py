@@ -473,6 +473,12 @@ class Column:
         return 0
 
     @property
+    def summary(self):
+        if self._child is not None:
+            return self._child.summary
+        return None
+
+    @property
     def changes(self):
         if self._child is not None:
             return self._child.changes

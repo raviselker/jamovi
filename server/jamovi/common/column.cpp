@@ -397,6 +397,90 @@ bool Column::shouldTreatAsMissing(int rowIndex)
     }
 }
 
+// a summary of the column: the number of values, and level counts in level
+// order (missing levels count as 0) or a histogram of continuous values. this
+// is kept to two passes over the data without copying it; anything costlier
+// belongs in an analysis
+Summary Column::summary()
+{
+    Summary s = { 0, { } };
+
+    if (hasLevels())
+    {
+        ColumnStruct *cs = struc();
+        Level *levels = _mm->resolve(cs->levels);
+        for (int i = 0; i < cs->levelsUsed; i++)
+        {
+            int count = levels[i].treatAsMissing ? 0 : levels[i].count;
+            s.counts.push_back(count);
+            s.n += count;
+        }
+        return s;
+    }
+
+    if (dataType() == DataType::TEXT && measureType() != MeasureType::ID)
+        return s;
+
+    bool userMissing = struc()->missingValuesUsed > 0;
+    int rows = rowCount();
+
+    if (dataType() == DataType::TEXT)
+    {
+        for (int i = 0; i < rows; i++)
+        {
+            const char *value = cellAt<char*>(i);
+            if (value != NULL && _mm->resolve(value)[0] != '\0' && ! (userMissing && shouldTreatAsMissing(i)))
+                s.n++;
+        }
+        return s;
+    }
+
+    bool decimal = dataType() == DataType::DECIMAL;
+    auto valueAt = [&](int i) {
+        double value;
+        if (decimal)
+            value = cellAt<double>(i);
+        else
+        {
+            int iv = cellAt<int>(i);
+            value = iv == INT_MIN ? NAN : iv;
+        }
+        return (userMissing && ! isnan(value) && shouldTreatAsMissing(i)) ? NAN : value;
+    };
+
+    double min = NAN;
+    double max = NAN;
+    for (int i = 0; i < rows; i++)
+    {
+        double value = valueAt(i);
+        if (isnan(value))
+            continue;
+        if (s.n == 0 || value < min) min = value;
+        if (s.n == 0 || value > max) max = value;
+        s.n++;
+    }
+
+    if (s.n == 0 || measureType() != MeasureType::CONTINUOUS)
+        return s;
+
+    // integers get a bin each when there are few of them
+    int bins = 20;
+    if ( ! decimal && max - min + 1 < bins)
+        bins = max - min + 1;
+
+    s.counts.resize(bins, 0);
+    for (int i = 0; i < rows; i++)
+    {
+        double value = valueAt(i);
+        if (isnan(value))
+            continue;
+        int bin = max == min ? 0 : (int)((value - min) / (max - min) * bins);
+        s.counts[bin < bins ? bin : bins - 1]++;
+    }
+
+    return s;
+}
+
 bool Column::shouldTreatAsMissing(const char *sv, const char *sv2)
 {
     return shouldTreatAsMissing(sv, INT_MIN, NAN, sv2);
