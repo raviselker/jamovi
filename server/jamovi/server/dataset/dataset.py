@@ -86,10 +86,24 @@ class DataSet(Protocol):
         raise NotImplementedError
 
     @abstractmethod
-    def refresh_view_order(self, sort_keys: list[tuple[int, bool]], ex_filtered: bool) -> bool:
+    def refresh_view_order(self, sort_keys: list[tuple[int, bool]], ex_filtered: bool,
+            search: tuple[str, list[int], bool] | None = None) -> bool:
         """rebuild the view order: the data set rows displayed, in the order
-        they're displayed. sort_keys are (column id, descending) pairs, and
-        ex_filtered omits filtered rows. returns whether it changed"""
+        they're displayed. sort_keys are (column id, descending) pairs,
+        ex_filtered omits filtered rows, and search (text, column ids, whole
+        cell) omits rows not matching. returns whether it changed"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_view_order(self, ex_filtered: bool,
+            search: tuple[str, list[int], bool] | None = None) -> bool:
+        """update the rows displayed, without moving those that remain
+        (new rows go last). returns whether it changed"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_view_order_sorted(self, sort_keys: list[tuple[int, bool]]) -> bool:
+        """whether the rows displayed are in the order of sort_keys"""
         raise NotImplementedError
 
     @property

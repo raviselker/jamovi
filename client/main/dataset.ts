@@ -135,6 +135,13 @@ export interface SortKey {
     descending: boolean
 }
 
+export interface ViewSearch {
+    text: string,  // empty for no search
+    columnIds: number[],  // none searches every column
+    whole: boolean,  // the whole cell must match
+    matches?: number
+}
+
 export interface Viewport {
     top: number;
     bottom: number;
@@ -167,7 +174,9 @@ interface DataSetModelData {
     addedRowCount: number,
     editedCellCount: number,
     rowCountExFiltered: number,
-    sortKeys: SortKey[]
+    sortKeys: SortKey[],
+    sortStale: boolean,
+    search: ViewSearch
 }
 
 class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
@@ -293,7 +302,9 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
             addedRowCount: 0,
             editedCellCount: 0,
             rowCountExFiltered: 0,
-            sortKeys: [ ]
+            sortKeys: [ ],
+            sortStale: false,
+            search: { text: '', columnIds: [ ], whole: false, matches: 0 }
         }, extra) as M);
     }
 
@@ -326,14 +337,60 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
     }
 
     visibleRowCount(): number {
-        if (this.get('filtersVisible'))
+        if (this.isSearching())
+            return this.attributes.search.matches;
+        else if (this.get('filtersVisible'))
             return this.get('rowCount');
         else
             return this.get('rowCountExFiltered');
     }
 
     isSorted(): boolean {
-        return this.attributes.sortKeys.length > 0;
+        // searching reorders the rows displayed too
+        return this.attributes.sortKeys.length > 0 || this.isSearching();
+    }
+
+    isSearching(): boolean {
+        return this.attributes.search.text !== '';
+    }
+
+    _readSearchPB(searchPB: any): ViewSearch {
+        if ( ! searchPB || ! searchPB.text)
+            return { text: '', columnIds: [ ], whole: false, matches: 0 };
+        return { text: searchPB.text, columnIds: [ ...searchPB.columnIds ], whole: searchPB.whole, matches: searchPB.matches };
+    }
+
+    _setSearch(search: ViewSearch) {
+        let current = this.attributes.search;
+        if (current.text === search.text && current.whole === search.whole && current.matches === search.matches
+                && current.columnIds.length === search.columnIds.length && current.columnIds.every((id, i) => id === search.columnIds[i]))
+            return;
+        this.set('search', search);
+    }
+
+    setSearch(search: ViewSearch) {
+        let coms = this.attributes.coms;
+
+        let datasetPB = new coms.Messages.DataSetRR();
+        datasetPB.op = coms.Messages.GetSet.SET;
+        datasetPB.noUndo = true;
+        datasetPB.incSchema = true;
+        datasetPB.schema = new coms.Messages.DataSetSchema();
+        datasetPB.schema.filtersVisible = this.get('filtersVisible');
+        datasetPB.schema.search = new coms.Messages.DataSetSchema.ViewSearch();
+        datasetPB.schema.search.text = search.text;
+        datasetPB.schema.search.columnIds = search.columnIds;
+        datasetPB.schema.search.whole = search.whole;
+
+        let request = new coms.Messages.ComsMessage();
+        request.payload = datasetPB.toArrayBuffer();
+        request.payloadType = 'DataSetRR';
+        request.instanceId = this.attributes.instanceId;
+
+        return coms.send(request).then(response => {
+            let datasetPB = coms.Messages.DataSetRR.decode(response.payload);
+            this._processDatasetRR(datasetPB);
+        });
     }
 
     _readSortPB(sortPB: any): SortKey[] {
@@ -419,6 +476,8 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
             this.attributes.rowCountExFiltered = infoPB.schema.rowCountExFiltered;
             this.attributes.filtersVisible = infoPB.schema.filtersVisible;
             this.attributes.sortKeys = this._readSortPB(infoPB.schema.sort);
+            this.attributes.sortStale = !! infoPB.schema.sort?.stale;
+            this.attributes.search = this._readSearchPB(infoPB.schema.search);
 
             let removedRowRanges = new Array(infoPB.schema.removedRowRanges.length);
             for (let i = 0; i < removedRowRanges.length; i++) {
@@ -660,12 +719,17 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
         });
     }
 
-    setSort(sortKeys: SortKey[]) {
+    resort() {
+        return this.setSort(this.attributes.sortKeys, true);
+    }
+
+    setSort(sortKeys: SortKey[], noUndo = false) {
 
         let coms = this.attributes.coms;
 
         let datasetPB = new coms.Messages.DataSetRR();
         datasetPB.op = coms.Messages.GetSet.SET;
+        datasetPB.noUndo = noUndo;
         datasetPB.incSchema = true;
         datasetPB.schema = new coms.Messages.DataSetSchema();
         datasetPB.schema.filtersVisible = this.get('filtersVisible');
@@ -1148,6 +1212,8 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
                 this.set('addedRowCount', datasetPB.schema.addedRowCount);
                 this.set('editedCellCount', datasetPB.schema.editedCellCount);
                 this.set('rowCountExFiltered', datasetPB.schema.rowCountExFiltered);
+                // before the view refreshes, as it sets the rows displayed
+                this._setSearch(this._readSearchPB(datasetPB.schema.search));
 
                 let removedRowRanges = new Array(datasetPB.schema.removedRowRanges.length);
                 for (let i = 0; i < removedRowRanges.length; i++) {
@@ -1293,8 +1359,10 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
 
         // last, as listeners expect the columns, rows and selection to be
         // up to date (the sort changes when a sort column is deleted)
-        if (datasetPB.schema)
+        if (datasetPB.schema) {
             this._setSortKeys(this._readSortPB(datasetPB.schema.sort));
+            this.set('sortStale', !! datasetPB.schema.sort?.stale);
+        }
 
         return outputData;
     }

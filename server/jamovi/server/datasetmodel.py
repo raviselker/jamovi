@@ -84,7 +84,10 @@ class DataSetModel:
     _log: object
     _row_tracker: RowTracker
     _sort_keys: list[tuple[int, bool]]
+    _search: tuple[str, list[int], bool] | None
     _view_order_valid: bool
+    _view_order_rebuild: bool
+    _view_order_stale: bool
     _view_remapped: bool
 
     def __init__(self, project: Project | None = None):
@@ -96,7 +99,10 @@ class DataSetModel:
         self._reuseable_virtual_ids = deque([])
         self._filters_visible = True
         self._sort_keys = [ ]
+        self._search = None  # only for this session; not saved, nor undoable
         self._view_order_valid = False
+        self._view_order_rebuild = True
+        self._view_order_stale = False
         self._view_remapped = False  # whether the view order was remapped when last refreshed
 
         self._perms = Permissions.retrieve()
@@ -168,7 +174,7 @@ class DataSetModel:
     @filters_visible.setter
     def filters_visible(self, visible):
         self._filters_visible = visible
-        self._view_order_valid = False
+        self.invalidate_view_order()
 
     @property
     def row_tracker(self):
@@ -199,27 +205,69 @@ class DataSetModel:
     @sort_keys.setter
     def sort_keys(self, keys: list[tuple[int, bool]]):
         self._sort_keys = [ (int(column_id), bool(descending)) for column_id, descending in keys ]
-        self._view_order_valid = False
+        self.invalidate_view_order()
 
     @property
     def is_sorted(self):
         return len(self._sort_keys) > 0
 
     @property
+    def search(self) -> tuple[str, list[int], bool] | None:
+        """the (text, column ids, whole cell) the rows displayed match"""
+        return self._search
+
+    @search.setter
+    def search(self, search: tuple[str, list[int], bool] | None):
+        if search is not None and search[0] == '':
+            search = None
+        self._search = search
+        self.invalidate_view_order()
+
+    @property
+    def is_searching(self):
+        return self._search is not None
+
+    @property
     def is_view_remapped(self):
         """whether view rows differ from data set rows"""
-        return self.is_sorted or (self.ex_filtered and self.has_filters)
+        return self.is_sorted or self.is_searching or (self.ex_filtered and self.has_filters)
 
-    def invalidate_view_order(self):
-        """mark the view order as needing to be rebuilt"""
+    @property
+    def view_order_stale(self) -> bool:
+        """whether edits have left the rows out of sort order"""
+        self._ensure_view_order()
+        return self._view_order_stale
+
+    def invalidate_view_order(self, rebuild=True):
+        """mark the view order as needing updating; rebuild re-sorts the
+        rows, otherwise the rows displayed remain where they are"""
         self._view_order_valid = False
+        self._view_order_rebuild = self._view_order_rebuild or rebuild
 
     def refresh_view_order(self) -> bool:
-        """rebuild the view order if invalidated; returns whether it changed"""
+        """update the view order if invalidated; returns whether it changed"""
         if self._view_order_valid:
             return False
-        changed = self._dataset.refresh_view_order(self._sort_keys, self.ex_filtered and self.has_filters)
+
+        # output columns are deleted without going through the controller
+        ids = { column.id for column in self }
+        if any(column_id not in ids for column_id, _ in self._sort_keys):
+            self._sort_keys = [ key for key in self._sort_keys if key[0] in ids ]
+            self._view_order_rebuild = True
+        if self._search is not None and any(column_id not in ids for column_id in self._search[1]):
+            self._search = None
+            self._view_order_rebuild = True
+
+        ex_filtered = self.ex_filtered and self.has_filters
+        if self._view_order_rebuild or not (self.is_sorted or self.is_searching):
+            changed = self._dataset.refresh_view_order(self._sort_keys, ex_filtered, self._search)
+            self._view_order_stale = False
+        else:
+            changed = self._dataset.update_view_order(ex_filtered, self._search)
+            self._view_order_stale = self.is_sorted and not self._dataset.is_view_order_sorted(self._sort_keys)
+
         self._view_order_valid = True
+        self._view_order_rebuild = False
         # rows added or removed change the view order, but this only
         # matters to the client when view rows differ from data set rows
         was_remapped = self._view_remapped
@@ -448,17 +496,18 @@ class DataSetModel:
     def set_row_count(self, count):
         self._check_perms(row_count=count)
         self._dataset.set_row_count(count)
-        self._view_order_valid = False
+        self.invalidate_view_order(rebuild=False)
 
     def delete_rows(self, start, end):
+        # rows beyond those removed have new data set rows
+        self.invalidate_view_order(rebuild=end < self.row_count - 1)
         self._dataset.delete_rows(start, end)
-        self._view_order_valid = False
         self._recalc_all()
 
     def insert_rows(self, start, count):
         self._check_perms(row_count=self.row_count + count)
+        self.invalidate_view_order(rebuild=start < self.row_count)
         self._dataset.insert_rows(start, start + count - 1)
-        self._view_order_valid = False
         self._recalc_all()
 
     def insert_column(self, index, name=None, import_name=None, id=0):
@@ -532,7 +581,7 @@ class DataSetModel:
 
     def refresh_filter_state(self):
         self._dataset.refresh_filter_state()
-        self._view_order_valid = False
+        self.invalidate_view_order(rebuild=False)
 
     def delete_columns(self, start, end):
         self._dataset.delete_columns(start, end)
@@ -721,7 +770,7 @@ class DataSetModel:
     @dataset.setter
     def dataset(self, dataset: DataSet):
         self._dataset = dataset
-        self._view_order_valid = False
+        self.invalidate_view_order()
 
     def setup(self):
 

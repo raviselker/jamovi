@@ -79,27 +79,16 @@
     background-image: url('../../assets/menu-variable-insert.svg');
 }
 
-.jmv-context-menu-button[data-icon='sortasc'] > .jmv-ribbon-button-icon {
-    background-image: url('../../assets/menu-sort-ascending.svg');
+.jmv-context-menu-button[data-icon='searchcolumn'] > .jmv-ribbon-button-icon {
+    background-image: url('../../assets/menu-search-column.svg');
 }
 
-.jmv-context-menu-button[data-icon='sortdesc'] > .jmv-ribbon-button-icon {
-    background-image: url('../../assets/menu-sort-descending.svg');
-}
-
-.jmv-context-menu-button[data-icon='sortclear'] > .jmv-ribbon-button-icon {
-    background-image: url('../../assets/menu-sort-clear.svg');
-}
-
-.jmv-context-menu-button[data-icon='sortclearall'] > .jmv-ribbon-button-icon {
-    background-image: url('../../assets/menu-sort-clear-all.svg');
-}
-
-.jmv-context-menu-button[data-icon='sortasc'] > .jmv-ribbon-button-icon,
-.jmv-context-menu-button[data-icon='sortdesc'] > .jmv-ribbon-button-icon,
-.jmv-context-menu-button[data-icon='sortclear'] > .jmv-ribbon-button-icon,
-.jmv-context-menu-button[data-icon='sortclearall'] > .jmv-ribbon-button-icon {
-    width: 28px;
+.jmv-context-menu-button[data-icon='sort'] > .jmv-ribbon-button-icon {
+    background-image: url('../../assets/menu-sort.svg');
+    /* wider for the arrow, so the grid is the same size as the other icons,
+       without moving the label */
+    width: 25px;
+    margin-inline-end: -5px;
 }
 
 .jmv-context-menu-button[data-icon='insertrow'] > .jmv-ribbon-button-icon {

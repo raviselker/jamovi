@@ -6,22 +6,21 @@
 }
 
 .jmv-variables-searchbox {
-    width: 100%;
     display: flex;
     flex-direction: row;
     grid-area: 1 / 1 / span 1 / span 1;
     align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background-color: #f3f6fb;
+    border-bottom: 1px solid #d5deeb;
+    font-size: 90%;
+    color: #446;
 }
 
-.jmv-variables-searchbox .image {
-    width: 20px;
-    height: 20px;
-    filter: opacity(60%);
-    margin: 0px 5px;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 15px 15px;
-    background-image: url('../assets/variable-search.svg');
+/* line the glyph up with the data view's, which sits in a padded menu button */
+.jmv-variables-searchbox .jmv-search-field-glyph {
+    margin-inline-start: 3px;
 }
 
 .jmv-variablesview .measure-box {
@@ -40,19 +39,16 @@
     top: 2px;
 }
 
-.jmv-variables-searchbox .search {
-    width: 100%;
-    padding-inline-start: 5px;
-}
 
 .jmv-variables-container {
     grid-area: 2 / 1 / span 1 / span 1;
     overflow: auto;
-    margin-top: 8px;
+    margin-top: 0;
     margin-inline-end: 0px;
     margin-bottom: 0px;
     margin-inline-start: 3px;
     border: 1px solid #ACACAC;
+    border-top: 0;
     background-color: white;
     display: flex;
     flex-direction: column;

@@ -29,7 +29,9 @@ public:
     void deleteColumns(int rowStart, int rowEnd);
     void setRowCount(size_t count);
     void refreshFilterState();
-    bool refreshViewOrder(const std::vector<int> &columnIds, const std::vector<bool> &descending, bool exFiltered);
+    bool refreshViewOrder(const std::vector<int> &columnIds, const std::vector<bool> &descending, bool exFiltered, const std::string &search, const std::vector<int> &searchColumnIds, bool searchWhole);
+    bool updateViewOrder(bool exFiltered, const std::string &search, const std::vector<int> &searchColumnIds, bool searchWhole);
+    bool isViewOrderSorted(const std::vector<int> &columnIds, const std::vector<bool> &descending);
 
     ColumnW operator[](int index);
     ColumnW operator[](const char *name);
@@ -55,6 +57,10 @@ protected:
     DataSetW(MemoryMapW *memoryMap);
     static void initColumn(MemoryMapW *mm, ColumnStruct *&column);
     static ColumnStruct *createIndexColumn(DataSetW *ds, MemoryMapW *mm);
+
+    std::vector<std::vector<double> > sortKeys(const std::vector<int> &columnIds, const std::vector<bool> &descending);
+    bool setViewOrder(const std::vector<int> &rows);
+    std::vector<char> searchRows(const std::string &search, const std::vector<int> &columnIds, bool whole);
 
 private:
 

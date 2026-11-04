@@ -144,7 +144,7 @@
     border-bottom: 1px solid #ACACAC;
     box-sizing: border-box ;
     background-color: #F8F8F8 ;
-    grid-area: 2 / 1 / span 1 / span 1;
+    grid-area: 3 / 1 / span 1 / span 1;
 }
 
 .jmv-column {
@@ -211,7 +211,7 @@
     z-index: 20 ;
     overflow: hidden ;
     box-sizing: border-box ;
-    grid-area: 1 / 1 / span 1 / span 1;
+    grid-area: 2 / 1 / span 1 / span 1;
 }
 
 .jmv-table-header-background {
@@ -300,12 +300,224 @@
     font-size: 9px;
     line-height: 1;
     color: #3E6DA9;
-    pointer-events: none;
+    cursor: pointer;
+    border-radius: 3px;
 }
 
-/* the sort indicator only shows when the column is sorted */
+/* once sorting, a faint arrow on hover offers to add the column to the sort
+   (on touch, where there's no hover, it's on the selected columns instead,
+   like the resizer) */
+.jmv-tableview.sorting .jmv-column-header:not([data-sort]):not([data-columntype=none]):hover .jmv-column-header-sort,
+.jmv-tableview.sorting:not(.fine-pointer) .jmv-column-header.highlighted:not([data-sort]):not([data-columntype=none]) .jmv-column-header-sort {
+    display: flex;
+    opacity: 0.4;
+}
+
 .jmv-column-header[data-sort] .jmv-column-header-sort {
     display: flex;
+}
+
+.jmv-column-header .jmv-column-header-sort:hover {
+    opacity: 1;
+    background-color: #c5d6ec;
+}
+
+/* on touch, the selected column's resizer would cover the arrow, so it moves
+   clear of it, and is bigger to tap */
+@media (pointer: coarse) {
+    .jmv-column-header.highlighted .jmv-column-header-sort:not(.jmv-tableview.fine-pointer *) {
+        margin-inline-end: 24px;
+        min-width: 22px;
+        height: 22px;
+    }
+}
+
+.jmv-tableview > .jmv-status-bar {
+    grid-area: 4 / 1 / span 1 / span 1;
+}
+
+.jmv-sort-bar {
+    grid-area: 1 / 1 / span 1 / span 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background-color: #f3f6fb;
+    border-bottom: 1px solid #d5deeb;
+    font-size: 90%;
+    color: #446;
+}
+
+.jmv-sort-bar.moving {
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* stays in the grid when closed, so the rows of the grid don't shift */
+.jmv-sort-bar:not(.open):not(.moving) {
+    display: none;
+}
+
+.jmv-sort-bar-sort {
+    display: contents;
+}
+
+/* the search field, shared by the data and variables views */
+.jmv-search-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-sizing: border-box;
+    min-height: 24px;
+    padding: 1px 4px 1px 7px;
+    background-color: white;
+    border: 1px solid #b7c9e2;
+    border-radius: 12px;
+    cursor: text;
+}
+
+.jmv-search-field:focus-within {
+    border-color: #3E6DA9;
+    box-shadow: 0 0 0 2px #c5d6ec;
+}
+
+.jmv-search-field button {
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+}
+
+.jmv-search-field-glyph {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 auto;
+    opacity: 0.6;
+    background: url('../assets/variable-search.svg') center / contain no-repeat;
+}
+
+.jmv-search-field .jmv-search-field-input {
+    border: 0;
+    outline: 0;
+    padding: 1px 0;
+    width: 130px;
+    font: inherit;
+    color: #333;
+    background: none;
+}
+
+.jmv-search-field .jmv-search-field-clear {
+    padding: 0 2px;
+    color: #778;
+    font-size: 120%;
+    line-height: 1;
+}
+
+.jmv-search-count {
+    color: #667;
+    margin-inline-end: 8px;
+}
+
+.jmv-search-count:empty {
+    display: none;
+}
+
+/* in the data view, the icon is a menu of the columns to search in */
+.jmv-sort-bar-search-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 3px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.jmv-sort-bar-search-icon:hover,
+.jmv-sort-bar-search-icon:focus-within {
+    background-color: #dfe8f5;
+}
+
+.jmv-sort-bar-search-icon::after {
+    content: '\25BE';
+    font-size: 10px;
+    color: #3E6DA9;
+}
+
+.jmv-sort-bar .jmv-sort-bar-search-in {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.jmv-search-field .jmv-sort-bar-search-scope {
+    padding: 0 7px;
+    background-color: #dfe8f5;
+    color: #2c5288;
+    border-radius: 9px;
+    white-space: nowrap;
+}
+
+.jmv-search-field .jmv-sort-bar-search-whole {
+    padding: 0 4px;
+    border: 1px solid #b7c9e2;
+    border-radius: 4px;
+    font-size: 85%;
+    color: #778;
+    text-decoration: underline;
+}
+
+.jmv-search-field .jmv-sort-bar-search-whole[aria-pressed=true] {
+    background-color: #3E6DA9;
+    border-color: #3E6DA9;
+    color: white;
+}
+
+.jmv-sort-bar button,
+.jmv-sort-bar select {
+    border: 0;
+    background: none;
+    color: #3E6DA9;
+    font: inherit;
+    cursor: pointer;
+}
+
+.jmv-sort-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-sizing: border-box;
+    min-height: 24px;
+    padding: 1px 3px 1px 10px;
+    background-color: white;
+    border: 1px solid #b7c9e2;
+    border-radius: 12px;
+    cursor: grab;
+}
+
+.jmv-sort-chip.drag-over {
+    border-color: #3E6DA9;
+    box-shadow: 0 0 0 2px #c5d6ec;
+}
+
+.jmv-sort-bar .jmv-sort-chip-remove {
+    color: #778;
+    font-size: 120%;
+    line-height: 1;
+}
+
+.jmv-sort-bar .jmv-sort-bar-resort {
+    padding: 1px 10px;
+    background-color: #fff3d6;
+    color: #7a5600;
+    border: 1px solid #e8cf8f;
+    border-radius: 12px;
+}
+
+.jmv-sort-bar .jmv-sort-bar-clear {
+    margin-inline-start: auto;
 }
 
 .jmv-column-header-sort::before {

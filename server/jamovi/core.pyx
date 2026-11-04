@@ -70,7 +70,9 @@ cdef extern from "datasetw.h":
         void deleteRows(int start, int end) except +
         void deleteColumns(int start, int end) except +
         void refreshFilterState() except +
-        bool refreshViewOrder(const vector[int] &columnIds, const vector[bool] &descending, bool exFiltered) except +
+        bool refreshViewOrder(const vector[int] &columnIds, const vector[bool] &descending, bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole) except +
+        bool updateViewOrder(bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole) except +
+        bool isViewOrderSorted(const vector[int] &columnIds, const vector[bool] &descending) except +
         int viewRowCount() except +
         int getDataIndex(int viewRow) except +
         int getViewIndex(int dataRow) except +
@@ -205,10 +207,20 @@ cdef class DataSet:
     def refresh_filter_state(self):
         self._this.refreshFilterState()
 
-    def refresh_view_order(self, sort_keys, ex_filtered):
+    def refresh_view_order(self, sort_keys, ex_filtered, search=None):
         cdef vector[int] column_ids = [ column_id for column_id, _ in sort_keys ]
         cdef vector[bool] descending = [ desc for _, desc in sort_keys ]
-        return self._this.refreshViewOrder(column_ids, descending, ex_filtered)
+        text, search_ids, whole = search or ('', [ ], False)
+        return self._this.refreshViewOrder(column_ids, descending, ex_filtered, text.encode('utf-8'), search_ids, whole)
+
+    def update_view_order(self, ex_filtered, search=None):
+        text, search_ids, whole = search or ('', [ ], False)
+        return self._this.updateViewOrder(ex_filtered, text.encode('utf-8'), search_ids, whole)
+
+    def is_view_order_sorted(self, sort_keys):
+        cdef vector[int] column_ids = [ column_id for column_id, _ in sort_keys ]
+        cdef vector[bool] descending = [ desc for _, desc in sort_keys ]
+        return self._this.isViewOrderSorted(column_ids, descending)
 
     @property
     def view_row_count(self):

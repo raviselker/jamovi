@@ -938,9 +938,20 @@ void ColumnW::_transferLevels(ColumnW &dest, ColumnW &src)
     }
 }
 
-static vector<double> rankStrings(const vector<string> &values)
+static vector<double> rankStrings(vector<string> values)
 {
-    // the rank of each string, by code point (equal strings rank equally)
+    // the rank of each string, ignoring case (equal strings rank equally)
+    // shortcut: folds ASCII only, by code point, so accented letters sort
+    // after z; a collation library would be needed for language aware order
+    for (string &value : values)
+    {
+        for (char &c : value)
+        {
+            if (c >= 'A' && c <= 'Z')
+                c += 'a' - 'A';
+        }
+    }
+
     vector<string> sorted = values;
     sort(sorted.begin(), sorted.end());
     sorted.erase(unique(sorted.begin(), sorted.end()), sorted.end());
@@ -1024,6 +1035,65 @@ vector<double> ColumnW::sortKeys(bool descending)
     }
 
     return keys;
+}
+
+static bool textMatches(string value, const string &text, bool whole)
+{
+    // shortcut: only ascii letters ignore case, use icu if non-latin data needs it
+    for (char &c : value)
+        c = tolower((unsigned char)c);
+    return whole ? value == text : value.find(text) != string::npos;
+}
+
+void ColumnW::searchRows(const string &text, bool whole, vector<char> &matches)
+{
+    // marks the rows whose displayed value matches text (in lower case);
+    // missing values never match
+
+    int n = std::min(rowCount(), (int)matches.size());
+
+    if (dataType() == DataType::DECIMAL)
+    {
+        int places = dps();
+        char buffer[64];
+        for (int i = 0; i < n; i++)
+        {
+            double value = raw<double>(i);
+            if (std::isnan(value))
+                continue;
+            snprintf(buffer, sizeof(buffer), "%.*f", places, value);
+            if (textMatches(buffer, text, whole))
+                matches[i] = 1;
+        }
+    }
+    else if (dataType() == DataType::TEXT && measureType() == MeasureType::ID)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            const char *value = raws(i);
+            if (value[0] != '\0' && textMatches(value, text, whole))
+                matches[i] = 1;
+        }
+    }
+    else
+    {
+        // each level's label is checked once
+        ColumnStruct *s = struc();
+        Level *levels = _mm->resolve(s->levels);
+        map<int, bool> levelMatches;
+        for (int i = 0; i < s->levelsUsed; i++)
+            levelMatches[levels[i].value] = textMatches(_mm->resolve(levels[i].label), text, whole);
+
+        for (int i = 0; i < n; i++)
+        {
+            int value = raw<int>(i);
+            if (value == INT_MIN)
+                continue;
+            auto level = levelMatches.find(value);
+            if (level != levelMatches.end() ? level->second : textMatches(to_string(value), text, whole))
+                matches[i] = 1;
+        }
+    }
 }
 
 void ColumnW::_discardScratchColumn()

@@ -59,6 +59,8 @@ class VariablesView extends HTMLElement  implements DataSetView {
     $body: HTMLElement;
     $container: HTMLElement;
     $search: HTMLInputElement;
+    $searchClear: HTMLElement;
+    $searchCount: HTMLElement;
 
     searchingInProgress: NodeJS.Timeout;
     _selectionChanging: NodeJS.Timeout;
@@ -113,13 +115,17 @@ class VariablesView extends HTMLElement  implements DataSetView {
 
         this.append(
             h('div', { class: 'jmv-variables-searchbox', role: 'presentation' },
-                h('div', { class: 'image' }),
-                h('input', {
-                    type: 'search',
-                    class: 'search',
-                    placeholder: _('Search variables'),
-                    'aria-description': _('Search variables')
-                })),
+                h('div', { class: 'jmv-search-field' },
+                    h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }),
+                    h('input', {
+                        class: 'search jmv-search-field-input',
+                        placeholder: _('Search variables'),
+                        'aria-label': _('Search variables'),
+                        spellcheck: 'false',
+                        autocomplete: 'off'
+                    }),
+                    h('button', { class: 'jmv-search-field-clear', title: _('Clear the search'), 'aria-label': _('Clear the search') }, '\u00D7')),
+                h('span', { class: 'jmv-search-count', 'aria-live': 'polite' })),
             h('div', { class: 'jmv-variables-container', role: 'none' },
                 h('div', {
                     class: 'jmv-variables-body',
@@ -158,17 +164,43 @@ class VariablesView extends HTMLElement  implements DataSetView {
 
         this.$search = this.querySelector('.search');
 
+        this.$searchClear = this.querySelector('.jmv-search-field-clear');
+        this.$searchCount = this.querySelector('.jmv-search-count');
+        this._updateSearchField();
+
+        // like the data view's search
+        let applySearch = () => {
+            clearTimeout(this.searchingInProgress);
+            this.searchingInProgress = null;
+            this._updateSearchField();
+            this._updateList();
+            if (this._topIndex !== -1)
+                this.selection.setSelection(0, this._topIndex, true);
+        };
         this.$search.addEventListener('input', (event) => {
-            if (this.searchingInProgress)
-                clearTimeout(this.searchingInProgress);
-            
-            this.searchingInProgress = setTimeout(() => {
-                this._updateList();
-                if (this._topIndex !== -1)
-                    this.selection.setSelection(0, this._topIndex, true);
-                this.searchingInProgress = null;
-            }, 600);
+            this._updateSearchField();
+            clearTimeout(this.searchingInProgress);
+            this.searchingInProgress = setTimeout(applySearch, 250);
         });
+        this.$search.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'Enter') {
+                applySearch();
+            }
+            else if (event.key === 'Escape') {
+                event.preventDefault();  // where the browser allows, it doesn't leave full screen
+                if (this.$search.value !== '') {
+                    event.stopPropagation();
+                    this.$search.value = '';
+                    applySearch();
+                }
+            }
+        });
+        this.$searchClear.addEventListener('click', () => {
+            this.$search.value = '';
+            applySearch();
+            this.$search.focus();
+        });
+        this.querySelector('.jmv-search-field').addEventListener('click', () => this.$search.focus());
 
         this.$search.addEventListener('focus', () => {
             this.$search.select();
@@ -480,6 +512,19 @@ class VariablesView extends HTMLElement  implements DataSetView {
 
         this.$body.style.gridTemplateRows = `repeat(${row}, auto)`;
         this.statusbar.updateInfoLabel('columnCount', finalColumnCount);
+
+        if (this.$searchCount) {
+            if (this.$search.value === '')
+                this.$searchCount.textContent = '';
+            else if (finalColumnCount === 1)
+                this.$searchCount.textContent = _('1 variable');
+            else
+                this.$searchCount.textContent = _('{0} variables', [ finalColumnCount ]);
+        }
+    }
+
+    _updateSearchField() {
+        this.$searchClear.style.visibility = this.$search.value !== '' ? '' : 'hidden';
     }
 
     _getRowByIndex(index: number) {
@@ -845,11 +890,19 @@ class VariablesView extends HTMLElement  implements DataSetView {
 
     _columnsInserted(event) {
         this.$search.value = '';
+        this._updateSearchField();
         this._updateFilterInfo();
         this._updateList();
     }
 
     _notEditingKeyPress(event: KeyboardEvent) {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+            event.preventDefault();
+            this.$search.focus();
+            this.$search.select();
+            return true;
+        }
+
         if (event.altKey)
             return;
 

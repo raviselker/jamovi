@@ -105,10 +105,9 @@ class ViewController extends EventEmitter {
             }, 'right');
         });
 
-        ActionHub.get('sortAsc').on('request', () => this._sortBySelection(false));
-        ActionHub.get('sortDesc').on('request', () => this._sortBySelection(true));
-        ActionHub.get('sortClear').on('request', () => this._clearSelectionSort());
-        ActionHub.get('sortClearAll').on('request', () => this.setSort([]));
+        ActionHub.get('sort').on('request', () => this._sortSelection());
+        ActionHub.get('search').on('request', () => this.emit('toggleSearch'));
+        ActionHub.get('searchColumn').on('request', () => this.emit('openSearch', this._selectionSortIds()));
 
         ActionHub.get('toggleFilterVisible').on('request', () => {
             this.model.toggleFilterVisibility();
@@ -169,12 +168,8 @@ class ViewController extends EventEmitter {
         ActionHub.get('insertOutput').set('enabled',  selection.right <= dataSetBounds.right && hasFilters === false);
         ActionHub.get('insertRow').set('enabled', selection.rowNo <= dataSetBounds.bottom && ! sorted);
         let sortable = columns.some(column => this._isSortable(column));
-        ActionHub.get('sortAsc').set('enabled', sortable);
-        ActionHub.get('sortDesc').set('enabled', sortable);
-        ActionHub.get('sortAsc').set('value', this._selectionHasSort(false));
-        ActionHub.get('sortDesc').set('value', this._selectionHasSort(true));
-        ActionHub.get('sortClear').set('enabled', this._selectionHasSort(false) || this._selectionHasSort(true));
-        ActionHub.get('sortClearAll').set('enabled', sorted);
+        ActionHub.get('sort').set('enabled', sortable);
+        ActionHub.get('searchColumn').set('enabled', sortable);
         ActionHub.get('cut').set('enabled', hasFilters === false);
         ActionHub.get('paste').set('enabled', hasFilters === false);
         ActionHub.get('compute').set('enabled', hasFilters === false);
@@ -209,48 +204,53 @@ class ViewController extends EventEmitter {
             .map(column => column.id);
     }
 
-    _selectionHasSort(descending: boolean): boolean {
-        // whether any of the selected columns are sorted in this direction
-        let ids = this._selectionSortIds();
-        return this.model.attributes.sortKeys.some(key => key.descending === descending && ids.includes(key.columnId));
-    }
-
-    _sortBySelection(descending: boolean) {
+    _sortSelection() {
+        let sortKeys = this.model.attributes.sortKeys;
         let ids = this._selectionSortIds();
         if (ids.length === 0)
             return;
 
-        let sortKeys = this.model.attributes.sortKeys;
-        let sortedIds = sortKeys.map(key => key.columnId);
-
-        // these only affect the selected columns. the buttons behave as
-        // toggles; a highlighted button (any of the selected columns sorted
-        // in that direction) is turned off, an unhighlighted button applies
-        // that direction to all of them
-        let newKeys: SortKey[];
-        if (this._selectionHasSort(descending)) {
-            // remove the selected columns sorted in this direction
-            newKeys = sortKeys.filter(key => ! (ids.includes(key.columnId) && key.descending === descending));
-        }
-        else if (ids.some(id => ! sortedIds.includes(id))) {
-            // a selected column isn't sorted yet, so this is a new sort:
-            // the previous sorts are cleared, and the selected columns are
-            // applied in the order they were selected
-            newKeys = ids.map(id => ({ columnId: id, descending }));
-        }
-        else {
-            // all the selected columns are sorted, so change their direction
-            // (retaining their priority)
-            newKeys = sortKeys.map(key => ids.includes(key.columnId) ? { columnId: key.columnId, descending } : key);
-        }
-
-        this.setSort(newKeys);
+        // sorting by what's already the sort flips it, so sort can be pressed
+        // again for descending
+        if (ids.length === sortKeys.length && sortKeys.every(key => ids.includes(key.columnId)))
+            this.setSort(sortKeys.map(key => ({ columnId: key.columnId, descending: ! key.descending })));
+        else
+            this.setSort(ids.map(id => ({ columnId: id, descending: false })));
     }
 
-    _clearSelectionSort() {
-        let ids = this._selectionSortIds();
+    sortColumn(columnId: number, only: boolean = false) {
+        // a sorted column is flipped, retaining its priority
         let sortKeys = this.model.attributes.sortKeys;
-        this.setSort(sortKeys.filter(key => ! ids.includes(key.columnId)));
+        let sortKey = sortKeys.find(key => key.columnId === columnId);
+        if (only && ! (sortKey && sortKeys.length === 1))
+            this.setSort([ sortKey ?? { columnId, descending: false } ]);
+        else if (sortKey)
+            this.setSort(sortKeys.map(key => key === sortKey ? { columnId, descending: ! key.descending } : key));
+        else
+            this.setSort([ ...sortKeys, { columnId, descending: false } ]);
+    }
+
+    removeSort(columnId: number) {
+        this.setSort(this.model.attributes.sortKeys.filter(key => key.columnId !== columnId));
+    }
+
+    moveSort(from: number, to: number) {
+        let sortKeys = [ ...this.model.attributes.sortKeys ];
+        sortKeys.splice(to, 0, ...sortKeys.splice(from, 1));
+        this.setSort(sortKeys);
+    }
+
+    async resort() {
+        try {
+            await this.model.resort();
+        }
+        catch (error) {
+            this._notifyEditProblem({
+                title: error.message,
+                message: error.cause,
+                type: 'error',
+            });
+        }
     }
 
     async _toggleFilterEditor() {
@@ -649,6 +649,10 @@ class ViewController extends EventEmitter {
             }
             else if (event.key.toLowerCase() === 'y') {
                 this._redo();
+                event.preventDefault();
+            }
+            else if (event.key.toLowerCase() === 'f') {
+                this.emit('openSearch');
                 event.preventDefault();
             }
         }

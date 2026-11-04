@@ -608,11 +608,23 @@ message DataSetSchema {
 
     message ViewSort {
         repeated SortKey keys = 1;
+        bool stale = 2;  // edits have left rows out of order
     }
 
     // the order the rows are displayed in. in a request, present only
-    // when the order is to change (no keys displays rows in data order)
+    // to re-sort the rows (no keys displays rows in data order)
     ViewSort sort = 17;
+
+    message ViewSearch {
+        string text = 1;  // empty for no search
+        repeated int32 columnIds = 2;  // none searches every column
+        bool whole = 3;  // the whole cell must match
+        uint32 matches = 4;  // rows found (response only)
+    }
+
+    // the rows displayed are those matching. in a request, present only
+    // to change the search
+    ViewSearch search = 18;
 
     repeated TransformSchema transforms = 10;
     repeated RowRange removedRowRanges = 11;

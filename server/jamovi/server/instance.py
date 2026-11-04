@@ -564,6 +564,8 @@ class Instance:
                     column_pb.action = jcoms.DataSetSchema.ColumnSchema.Action.Value('REMOVE')
 
             if self._coms is not None and response is not None:
+                dataset.invalidate_view_order(rebuild=False)
+                response.viewOrderChanged = dataset.refresh_view_order()
                 controller.populate_schema_info(None, response)
                 # the client takes its undo state from every DataSetRR
                 response.changesCount = controller.mod_tracker.count

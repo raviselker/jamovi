@@ -14,7 +14,9 @@ import interactionManager from '../common/interactionmanager';
 import { h } from '../common/htmlelementcreator';
 
 import { s6e, contextMenuListener } from '../common/utils';
-import DataSetViewModel, { Column, ColumnActiveChangedEvent, ColumnEvent, ColumnType, DataType, MeasureType, Viewport } from './dataset';
+import dropdown from './vareditor/dropdown';
+import VariableList from './vareditor/variablelist';
+import DataSetViewModel, { Column, ColumnActiveChangedEvent, ColumnEvent, ColumnType, DataType, MeasureType, SortKey, Viewport } from './dataset';
 import Selection, { IAreaSelection, ISelection } from './selection';
 import ViewController, { DataSetView } from './viewcontroller';
 import Settings from './settings';
@@ -65,6 +67,22 @@ class TableView extends HTMLElement implements DataSetView {
     };
 
     model: DataSetViewModel;
+    $sortBar: HTMLElement;
+    $sortItems: HTMLElement;
+    $searchInput: HTMLInputElement;
+    $searchScope: HTMLElement;
+    $searchWhole: HTMLElement;
+    $searchClear: HTMLElement;
+    $searchIn: HTMLSelectElement;
+    _searchList: VariableList;
+    _sortList: VariableList;
+    $searchCount: HTMLElement;
+    _searchOpen = false;
+    _searchColumnIds: number[] = [ ];
+    _searchWhole = false;
+    _searchTimer: ReturnType<typeof setTimeout>;
+    _sortBarMoved: number;
+    _sortBarAnimation: Animation;
     _loaded: boolean;
     _isDragging: boolean;
     _clickCoords: { rowNo: number, colNo: number };
@@ -168,12 +186,14 @@ class TableView extends HTMLElement implements DataSetView {
         this.model.on('change:rowCountExFiltered', event => this.statusbar.updateInfoLabel('filteredRows',  this.model.attributes.rowCount - this.model.attributes.rowCountExFiltered));
         this.model.on('change:filtersVisible', event => this._updateEyeButton());
         this.model.on('change:sortKeys', event => this._updateSortIndicators());
+        this.model.on('change:sortStale', event => this._updateSortBar());
 
         this.classList.add('jmv-tableview');
         this.setAttribute('role', 'grid');
         this.setAttribute('aria-multiselectable', 'true');
 
         this.append(
+            h('div', { class: 'jmv-sort-bar', role: 'toolbar', 'aria-label': _('Sort') }),
             h('div', { class: 'jmv-table-header', role: 'row' },
                 h('div', { class: 'jmv-column-header place-holder', style: 'width: 110%' }, '\u00a0'),
                 h('div', { class: 'jmv-table-header-background' }),
@@ -221,10 +241,11 @@ class TableView extends HTMLElement implements DataSetView {
         this.statusbar.addActionButton('editFilters', { dock: 'left', label: _('Edit filters') });
         this.statusbar.addActionButton('toggleFilterVisible', { dock: 'left', label: _('Toggle filters visibility') });
         this.statusbar.addInfoLabel('activeFilters', { dock: 'left', label: _('Filters'), value: 0 });
-        this.statusbar.addInfoLabel('sortedBy', { dock: 'left', value: '' });
 
         this.$container = this.querySelector('.jmv-table-container');
         this.$header    = this.querySelector('.jmv-table-header');
+        this.$sortBar   = this.querySelector('.jmv-sort-bar');
+        this._createSearch();
         this.$body      = this.$container.querySelector('.jmv-table-body');
         this.$rhColumn  = this.$body.querySelector('.jmv-column-row-header');
 
@@ -258,7 +279,7 @@ class TableView extends HTMLElement implements DataSetView {
         // the bottom
         this._rowHeight = this.$header.offsetHeight - 1;
 
-        this.style.gridTemplateRows = `${ this._rowHeight }px 1fr 22px`;
+        this.style.gridTemplateRows = `auto ${ this._rowHeight }px 1fr 22px`;
 
         this.$header.style.height = `${this._rowHeight}px`;
 
@@ -384,7 +405,7 @@ class TableView extends HTMLElement implements DataSetView {
         // the bottom
         this._rowHeight = this.$header.offsetHeight - 1;
 
-        this.style.gridTemplateRows = `${ this._rowHeight }px 1fr 22px`;
+        this.style.gridTemplateRows = `auto ${ this._rowHeight }px 1fr 22px`;
 
         this.$header.style.height = `${this._rowHeight}px`;
 
@@ -552,13 +573,332 @@ class TableView extends HTMLElement implements DataSetView {
         for (let $header of this.$headers)
             this._updateHeaderSort($header);
 
-        let names = [ ];
-        for (let key of this.model.attributes.sortKeys) {
-            let column = this.model.getColumnById(key.columnId);
-            if (column)
-                names.push(`${ column.name } ${ key.descending ? '\u25BC' : '\u25B2' }`);
+        this._updateSortBar();
+    }
+
+    _createSortChip(key: SortKey, index: number, name: string) {
+        let $flip = h('button', { class: 'jmv-sort-chip-flip', title: _('Change direction') }, key.descending ? '\u25BC' : '\u25B2');
+        let $remove = h('button', { class: 'jmv-sort-chip-remove', title: _('Remove from sort') }, '\u00D7');
+        let $chip = h('div', { class: 'jmv-sort-chip', draggable: 'true' }, name, $flip, $remove);
+
+        $flip.addEventListener('click', () => this.controller.sortColumn(key.columnId));
+        $remove.addEventListener('click', () => this.controller.removeSort(key.columnId));
+
+        $chip.addEventListener('dragstart', (event: DragEvent) => event.dataTransfer.setData('text/plain', String(index)));
+        $chip.addEventListener('dragover', (event: DragEvent) => {
+            event.preventDefault();
+            $chip.classList.add('drag-over');
+        });
+        $chip.addEventListener('dragleave', () => $chip.classList.remove('drag-over'));
+        $chip.addEventListener('drop', (event: DragEvent) => {
+            event.preventDefault();
+            this.controller.moveSort(parseInt(event.dataTransfer.getData('text/plain')), index);
+        });
+
+        return $chip;
+    }
+
+    _createSearch() {
+        this.$searchInput = h('input', { class: 'jmv-sort-bar-search-input jmv-search-field-input', 'aria-label': _('Search the data'), spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
+        this.$searchScope = h('button', { class: 'jmv-sort-bar-search-scope', title: _('Search all columns instead') });
+        this.$searchWhole = h('button', { class: 'jmv-sort-bar-search-whole', title: _('Match whole cell'), 'aria-pressed': 'false' }, 'ab');
+        this.$searchClear = h('button', { class: 'jmv-sort-bar-search-clear jmv-search-field-clear', title: _('Clear the search'), 'aria-label': _('Clear the search') }, '\u00D7');
+        this.$searchCount = h('span', { class: 'jmv-sort-bar-search-count jmv-search-count', 'aria-live': 'polite' });
+        this.$sortItems = h('div', { class: 'jmv-sort-bar-sort' });
+
+        // the icon is a menu of the columns to search in
+        this.$searchIn = h('select', { class: 'jmv-sort-bar-search-in', 'aria-label': _('Search in'), title: _('Search in') }) as HTMLSelectElement;
+        this.$searchIn.addEventListener('click', (event) => event.stopPropagation());
+        this.$searchIn.addEventListener('change', () => {
+            let id = parseInt(this.$searchIn.value);
+            this._searchColumnIds = id ? [ id ] : [ ];
+            this._applySearch();
+            this.$searchInput.focus();
+        });
+
+        this._searchList = new VariableList();
+        this._searchList.querySelector('.none-item').textContent = _('All columns');
+        this._useVariableList(this.$searchIn, this._searchList, () => this._searchableColumns(), false);
+        this._sortList = new VariableList();
+        this._sortList.addEventListener('selected-variable', (event: CustomEvent<{ id: number }>) => {
+            dropdown.hide();
+            this.controller.sortColumn(event.detail.id);
+        });
+
+        this._searchList.addEventListener('selected-variable', (event: CustomEvent<{ id: number }>) => {
+            let id = event.detail.id;
+            this._searchColumnIds = id ? [ id ] : [ ];
+            this.$searchIn.value = String(id ?? 0);
+            dropdown.hide();
+            this._applySearch();
+            this.$searchInput.focus();
+        });
+
+        let $search = h('div', { class: 'jmv-sort-bar-search jmv-search-field' },
+            h('span', { class: 'jmv-sort-bar-search-icon' }, h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }), this.$searchIn),
+            this.$searchScope, this.$searchInput, this.$searchClear, this.$searchWhole);
+        $search.addEventListener('click', () => this.$searchInput.focus());
+        this.$sortBar.append($search, this.$searchCount, this.$sortItems);
+
+        this.$searchInput.addEventListener('input', () => {
+            this.$searchClear.style.visibility = this.$searchInput.value !== '' ? '' : 'hidden';
+            clearTimeout(this._searchTimer);
+            this._searchTimer = setTimeout(() => this._applySearch(), 250);
+        });
+        this.$searchInput.addEventListener('keydown', (event: KeyboardEvent) => {
+            event.stopPropagation();  // the table would take it as typing into a cell
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+                event.preventDefault();  // not the browser's find
+                // only an empty bar closes; a search or sort is never lost to it
+                if (this.$searchInput.value === '' && this.model.attributes.sortKeys.length === 0)
+                    this._closeSearch();
+                else
+                    this.$searchInput.select();
+            }
+            else if (event.key === 'Enter')
+                this._applySearch();
+            else if (event.key === 'Escape') {
+                event.preventDefault();  // where the browser allows, it doesn't leave full screen
+                if (this.$searchInput.value !== '') {
+                    this.$searchInput.value = '';
+                    this._applySearch();
+                }
+                else {
+                    this._closeSearch();
+                }
+            }
+        });
+        this.$searchScope.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this._searchColumnIds = [ ];
+            this._applySearch();
+            this.$searchInput.focus();
+        });
+        this.$searchClear.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.$searchInput.value = '';
+            this._applySearch();
+            this.$searchInput.focus();
+        });
+        this.$searchWhole.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this._searchWhole = ! this._searchWhole;
+            this._applySearch();
+            this.$searchInput.focus();
+        });
+
+        this.model.on('columnsChanged', () => {
+            if (document.activeElement !== this.$searchIn)
+                this._updateSearchColumns();
+        });
+        this.controller.on('openSearch', (columnIds?: number[]) => this.openSearch(columnIds));
+        this.controller.on('toggleSearch', () => {
+            // an empty bar closes again; a search or sort is never lost to it
+            if (this._searchOpen && this.$searchInput.value === '' && this.model.attributes.sortKeys.length === 0)
+                this._closeSearch();
+            else
+                this.openSearch(undefined, true);
+        });
+        this.model.on('change:search', () => {
+            // e.g. a searched column was deleted
+            let search = this.model.attributes.search;
+            if (search.text === '' && this._searchColumnIds.some(id => ! this.model.getColumnById(id))) {
+                // the column searched was deleted, which ends the search
+                this._searchColumnIds = [ ];
+                this.$searchInput.value = '';
+            }
+            if (search.text !== '') {
+                this._searchColumnIds = search.columnIds;
+                this._searchWhole = search.whole;
+            }
+            if (document.activeElement !== this.$searchInput)
+                this.$searchInput.value = search.text;
+            this._updateSearch();
+            this._updateSortBar();
+        });
+    }
+
+    openSearch(columnIds?: number[], fromRibbon = false) {
+        // ctrl+f searches every column, unless a search is under way
+        if (columnIds)
+            this._searchColumnIds = columnIds;
+        else if (this.$searchInput.value === '')
+            this._searchColumnIds = [ ];
+        this._searchOpen = true;
+        this._updateSearch();
+        this._updateSortBar();
+        // shortcut: the focus manager pulls focus back into the ribbon for 200ms
+        // after a ribbon click, so it's waited out; replace with a focus hand-over
+        // in the interaction manager if it gains one
+        setTimeout(() => {
+            this.$searchInput.focus();
+            this.$searchInput.select();
+        }, fromRibbon ? 250 : 0);
+        if (columnIds && this.$searchInput.value !== '')
+            this._applySearch();
+    }
+
+    _closeSearch() {
+        clearTimeout(this._searchTimer);
+        this._searchOpen = false;
+        this.$searchInput.value = '';
+        if (this.model.isSearching())
+            this._applySearch();
+        this._updateSortBar();
+        this.$searchInput.blur();
+    }
+
+    async _applySearch() {
+        clearTimeout(this._searchTimer);
+        this._updateSearch();
+        let text = this.$searchInput.value;
+        let current = this.model.attributes.search;
+        if (text === '' && current.text === '')
+            return;
+        try {
+            await this.model.setSearch({ text, columnIds: this._searchColumnIds, whole: this._searchWhole });
         }
-        this.statusbar.updateInfoLabel('sortedBy', names.length > 0 ? _('Sorted by {0}', [ names.join(', ') ]) : '');
+        catch (error) {
+            this.controller._notifyEditProblem({ title: error.message, message: error.cause, type: 'error' });
+        }
+    }
+
+    _useVariableList($select: HTMLSelectElement, list: VariableList, columns: () => Column[], excludeNone: boolean) {
+        // shows jamovi's variable list in place of the select's native menu,
+        // which on macos only reports the choice after its closing animation
+        $select.setAttribute('aria-owns', list.id);
+        let toggle = () => {
+            if (dropdown.isVisible() === true && dropdown.focusedOn() === $select) {
+                dropdown.hide();
+            }
+            else {
+                list.setParent($select);
+                list.populate(columns(), excludeNone);
+                dropdown.show($select, list);
+            }
+        };
+        $select.addEventListener('mousedown', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggle();
+            $select.focus();
+        });
+        $select.addEventListener('keydown', (event: KeyboardEvent) => {
+            event.stopPropagation();  // not the table's
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggle();
+            }
+            else if (event.key === 'Escape' && dropdown.isVisible() === true && dropdown.focusedOn() === $select) {
+                event.preventDefault();
+                dropdown.hide();
+            }
+        });
+    }
+
+    _searchableColumns() {
+        return this.model.attributes.columns.filter(column => this.controller._isSortable(column) && ! column.hidden);
+    }
+
+    _updateSearchColumns() {
+        // the options hold the value for the keyboard and screen readers;
+        // the list shown is _searchList
+        this.$searchIn.replaceChildren(
+            h('option', { value: '0' }, _('All columns')),
+            ...this._searchableColumns().map(column => h('option', { value: String(column.id) }, column.name)));
+        this.$searchIn.value = this._searchColumnIds.length === 1 ? String(this._searchColumnIds[0]) : '0';
+    }
+
+    _updateSearch() {
+        if (document.activeElement !== this.$searchIn)
+            this._updateSearchColumns();
+        let names = this._searchColumnIds.map(id => this.model.getColumnById(id)?.name).filter(name => name);
+        this.$searchScope.textContent = names.length > 0 ? `${ names.join(', ') } \u00D7` : '';
+        this.$searchScope.style.display = names.length > 0 ? '' : 'none';
+        this.$searchInput.placeholder = names.length > 0 ? _('Search') : _('Search all columns');
+        this.$searchWhole.setAttribute('aria-pressed', this._searchWhole ? 'true' : 'false');
+        this.$searchClear.style.visibility = this.$searchInput.value !== '' ? '' : 'hidden';
+
+        let search = this.model.attributes.search;
+        if (search.text === '')
+            this.$searchCount.textContent = '';
+        else if (search.matches === 1)
+            this.$searchCount.textContent = _('1 row');
+        else
+            this.$searchCount.textContent = _('{0} rows', [ search.matches ]);
+    }
+
+    _updateSortBar() {
+        let wasOpen = this.$sortBar.classList.contains('open');
+        let sortKeys = this.model.attributes.sortKeys;
+        let open = sortKeys.length > 0 || this._searchOpen || this.model.isSearching();
+        this.classList.toggle('sorting', open);  // header sort arrows on hover while the bar is open
+        let items: HTMLElement[] = [ ];
+
+        if (open) {
+            if (sortKeys.length > 0)
+                items.push(h('span', { class: 'jmv-sort-bar-label' }, _('Sorted by')));
+
+            sortKeys.forEach((key, index) => {
+                let column = this.model.getColumnById(key.columnId);
+                if (column)
+                    items.push(this._createSortChip(key, index, column.name));
+            });
+
+            let unsorted = this.model.attributes.columns.filter(column => {
+                return this.controller._isSortable(column) && ! column.hidden && ! sortKeys.some(key => key.columnId === column.id);
+            });
+            if (unsorted.length > 0) {
+                let $add = h('select', { class: 'jmv-sort-bar-add', 'aria-label': _('Add column to sort') },
+                    h('option', { value: '' }, sortKeys.length > 0 ? _('+ Add column') : _('+ Sort by')),
+                    ...unsorted.map(column => h('option', { value: String(column.id) }, column.name)));
+                $add.addEventListener('change', () => this.controller.sortColumn(parseInt($add.value)));
+                this._useVariableList($add, this._sortList, () => unsorted, true);
+                items.push($add);
+            }
+
+            if (sortKeys.length > 0 && this.model.attributes.sortStale) {
+                let $resort = h('button', { class: 'jmv-sort-bar-resort' }, `\u21BB ${ _('Re-sort') }`);
+                $resort.addEventListener('click', () => this.controller.resort());
+                items.push($resort);
+            }
+
+            let $clear = h('button', { class: 'jmv-sort-bar-clear', title: _('Clear the search and the sort') }, _('Clear'));
+            $clear.addEventListener('click', () => {
+                this._closeSearch();
+                if (sortKeys.length > 0)
+                    this.controller.setSort([ ]);
+            });
+            items.push($clear);
+        }
+
+        let startHeight = this.$sortBar.offsetHeight;
+        this.$sortBar.classList.remove('moving');
+        this._sortBarAnimation?.cancel();
+
+        // the last contents stay until the bar has closed
+        let hiding = wasOpen && ! open;
+        if ( ! hiding)
+            this.$sortItems.replaceChildren(...items);
+        this.$sortBar.classList.toggle('open', open);
+
+        if (wasOpen !== open) {
+            this._sortBarMoved = performance.now();
+
+            let closed = { height: '0', paddingBlock: '0', borderBottomWidth: '0', opacity: 0 };
+            this.$sortBar.classList.add('moving');
+            let height = `${hiding ? startHeight : this.$sortBar.offsetHeight}px`;
+            let frames = hiding ? [ { height }, closed ] : [ closed, { height } ];
+            let duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 200;
+
+            this._sortBarAnimation = this.$sortBar.animate(frames, { duration, easing: 'ease-out' });
+            this._sortBarAnimation.onfinish = () => {
+                if (hiding)
+                    this.$sortItems.replaceChildren();
+                this.$sortBar.classList.remove('moving');
+                this._resizeHandler();
+            };
+        }
     }
 
     _addResizeListeners($element: HTMLElement) {
@@ -885,7 +1225,7 @@ class TableView extends HTMLElement implements DataSetView {
         let rowHeader = false;
         let colHeader = false;
 
-        let bounds = this.getBoundingClientRect();
+        let bounds = this.$header.getBoundingClientRect();  // beneath the sort bar
         let bodyBounds = this.$body.getBoundingClientRect();
 
         if (y - bounds.top >= 0 && y - bounds.top < this._rowHeight) // on column header
@@ -1285,6 +1625,10 @@ class TableView extends HTMLElement implements DataSetView {
 
     _dblClickHandler(event: MouseEvent) {
         let element = document.elementFromPoint(event.clientX, event.clientY);
+
+        // the bar appearing or vanishing moves the table under the second click
+        if (element.closest('.jmv-column-header-sort, .jmv-sort-bar') || performance.now() - this._sortBarMoved < 500)
+            return;
 
         if (element.closest('.select-all')) {
             this._fitColumnsToHeaders(this.$headers);
@@ -2497,8 +2841,10 @@ class TableView extends HTMLElement implements DataSetView {
             if ( ! column || column.name === '')  // virtual
                 continue;
 
+            // room for the sort arrow is kept, as it appears on hover while sorting
             let width = $header.querySelector<HTMLElement>('.jmv-column-header-icon').offsetWidth
                 + $header.querySelector('.jmv-column-header-label').scrollWidth
+                + Math.max($header.querySelector<HTMLElement>('.jmv-column-header-sort').offsetWidth, 14)
                 + 14;  // padding, border and rounding
 
             if (width > column.width) {
@@ -2889,7 +3235,7 @@ class TableView extends HTMLElement implements DataSetView {
                 'aria-colindex': String(column.dIndex),
                 'aria-label': label,
             }, column.name),
-            h('div', { class: 'jmv-column-header-sort' }),
+            h('div', { class: 'jmv-column-header-sort', title: _('Sort (hold Shift to sort by this column only)') }),
             h('div', { class: 'jmv-column-header-resizer', 'data-index': String(column.dIndex) }),
             h('div', { class: 'jmv-column-header-colour' }),
             h('div', { class: 'sub-selection-bar' }));
@@ -2899,6 +3245,13 @@ class TableView extends HTMLElement implements DataSetView {
         header.style.height = `${this._rowHeight}px`;
 
         this._updateHeaderSort(header);
+
+        header.querySelector('.jmv-column-header-sort').addEventListener('pointerdown', (event: PointerEvent) => {
+            if (event.button !== 0)
+                return;
+            event.stopPropagation();  // doesn't change the selection
+            this.controller.sortColumn(parseInt(header.dataset.id), event.shiftKey);
+        });
 
         return header;
     }

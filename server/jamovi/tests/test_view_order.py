@@ -270,9 +270,10 @@ async def _set_values(instance: Instance, coms: FakeComs, row_start: int, column
     return await _send(instance, coms, request)
 
 
-async def _sort(instance: Instance, coms: FakeComs, *keys: tuple[str, bool]):
+async def _sort(instance: Instance, coms: FakeComs, *keys: tuple[str, bool], no_undo: bool = False):
     dataset = instance.project.get_dataset()
     request = _set_request()
+    request.noUndo = no_undo
     request.incSchema = True
     request.schema.filtersVisible = dataset.filters_visible
     request.schema.sort.SetInParent()
@@ -393,32 +394,63 @@ async def test_get_cells_while_sorted(sortable_instance: Instance, coms: FakeCom
 
 @pytest.mark.asyncio
 async def test_edit_while_sorted(sortable_instance: Instance, coms: FakeComs):
-    """an edit lands on the displayed row, and the rows are re-sorted"""
+    """an edit lands on the displayed row, which stays put until re-sorted"""
     await _sort(sortable_instance, coms, ('B', False))
     response = await _set_values(sortable_instance, coms, 0, 1, [ 10.0 ])  # data row 1
     assert _values(sortable_instance, 'B')[1] == 10.0
-    assert response.viewOrderChanged
-    assert _view_order(sortable_instance) == [ 3, 0, 1, 2 ]
+    assert not response.viewOrderChanged
+    assert response.schema.sort.stale
+    assert _view_order(sortable_instance) == [ 1, 3, 0, 2 ]
 
-    response = await _set_values(sortable_instance, coms, 0, 0, [ 100 ])  # data row 3
-    assert _values(sortable_instance, 'A') == [ 1, 2, 3, 100 ]
+    response = await _set_values(sortable_instance, coms, 0, 0, [ 100 ])  # still data row 1
+    assert _values(sortable_instance, 'A') == [ 1, 100, 3, 4 ]
     assert not response.viewOrderChanged
 
 
 @pytest.mark.asyncio
-async def test_undo_edit_while_sorted(sortable_instance: Instance, coms: FakeComs):
-    """undoing an edit that moved a row restores it, and reports where it's displayed now"""
+async def test_resort(sortable_instance: Instance, coms: FakeComs):
+    """requesting the same sort re-sorts the rows, and isn't an undoable change"""
     await _sort(sortable_instance, coms, ('B', False))
-    await _set_values(sortable_instance, coms, 0, 1, [ 10.0 ])  # data row 1, moves to view row 2
+    edit_response = await _set_values(sortable_instance, coms, 0, 1, [ 10.0 ])
+
+    response = await _sort(sortable_instance, coms, ('B', False), no_undo=True)
+    assert response.viewOrderChanged
+    assert not response.schema.sort.stale
+    assert response.changesCount == edit_response.changesCount
+    assert _view_order(sortable_instance) == [ 3, 0, 1, 2 ]
+
+
+@pytest.mark.asyncio
+async def test_edit_keeping_order_is_not_stale(sortable_instance: Instance, coms: FakeComs):
+    """an edit that leaves the rows in order needs no re-sort"""
+    await _sort(sortable_instance, coms, ('B', False))
+    response = await _set_values(sortable_instance, coms, 0, 1, [ 1.6 ])
+    assert not response.schema.sort.stale
+
+
+@pytest.mark.asyncio
+async def test_edit_other_column_is_not_stale(sortable_instance: Instance, coms: FakeComs):
+    """editing a column that isn't sorted by needs no re-sort"""
+    await _sort(sortable_instance, coms, ('B', False))
+    response = await _set_values(sortable_instance, coms, 0, 0, [ 100 ])
+    assert not response.schema.sort.stale
+
+
+@pytest.mark.asyncio
+async def test_undo_edit_while_sorted(sortable_instance: Instance, coms: FakeComs):
+    """undoing an edit restores the value in place, and the rows are back in order"""
+    await _sort(sortable_instance, coms, ('B', False))
+    await _set_values(sortable_instance, coms, 0, 1, [ 10.0 ])  # data row 1
 
     response = await _op(sortable_instance, coms, 'UNDO')
     assert _values(sortable_instance, 'B')[1] == 1.5
-    assert response.viewOrderChanged
+    assert not response.schema.sort.stale
     assert _view_order(sortable_instance) == [ 1, 3, 0, 2 ]
-    assert _rects(response) == [ (0, 1, 1, 1) ]  # data row 1 is back at view row 0
+    assert _rects(response) == [ (0, 1, 1, 1) ]
 
-    await _op(sortable_instance, coms, 'REDO')
+    response = await _op(sortable_instance, coms, 'REDO')
     assert _values(sortable_instance, 'B')[1] == 10.0
+    assert response.schema.sort.stale
 
 
 @pytest.mark.asyncio
@@ -490,18 +522,20 @@ async def test_sort_empty_data_set(instance: Instance, coms: FakeComs):
     response = await _sort(instance, coms, ('A', False))
     assert response.schema.vRowCount == 50
 
-    await _set_values(instance, coms, 0, 0, [ 3, 1, 2 ])
+    response = await _set_values(instance, coms, 0, 0, [ 3, 1, 2 ])
     assert _values(instance, 'A') == [ 3, 1, 2 ]
-    assert _view_order(instance) == [ 1, 2, 0 ]
+    assert _view_order(instance) == [ 0, 1, 2 ]
+    assert response.schema.sort.stale
 
 
 @pytest.mark.asyncio
 async def test_enter_data_beneath_while_sorted(sortable_instance: Instance, coms: FakeComs):
-    """data entered beneath the sorted rows is appended, sorted, and can be undone"""
+    """data entered beneath the sorted rows joins the bottom, and can be undone"""
     await _sort(sortable_instance, coms, ('B', False))
     response = await _set_values(sortable_instance, coms, 4, 1, [ 0.5 ])
     assert _values(sortable_instance, 'B')[4] == 0.5
-    assert _view_order(sortable_instance) == [ 4, 1, 3, 0, 2 ]
+    assert _view_order(sortable_instance) == [ 1, 3, 0, 2, 4 ]
+    assert response.schema.sort.stale
     assert response.schema.vRowCount == 5 + 50
 
     await _op(sortable_instance, coms, 'UNDO')
@@ -509,7 +543,7 @@ async def test_enter_data_beneath_while_sorted(sortable_instance: Instance, coms
     assert _view_order(sortable_instance) == [ 1, 3, 0, 2 ]
 
     await _op(sortable_instance, coms, 'REDO')
-    assert _view_order(sortable_instance) == [ 4, 1, 3, 0, 2 ]
+    assert _view_order(sortable_instance) == [ 1, 3, 0, 2, 4 ]
 
 
 @pytest.mark.asyncio
@@ -531,7 +565,7 @@ async def test_append_rows_while_sorted(sortable_instance: Instance, coms: FakeC
 
 @pytest.mark.asyncio
 async def test_sort_by_filter(filtered_instance: Instance, coms: FakeComs):
-    """rows can be sorted by whether a filter keeps them, live"""
+    """rows can be sorted by whether a filter keeps them"""
     await _set_filters_visible(filtered_instance, coms, True)
     filter_name = filtered_instance.project.get_dataset()[0].name
     await _sort(filtered_instance, coms, (filter_name, True))
@@ -539,4 +573,6 @@ async def test_sort_by_filter(filtered_instance: Instance, coms: FakeComs):
 
     await _set_ints(filtered_instance, coms, 3, 1, [ 10 ])  # view row 3 is data row 0
     assert _values(filtered_instance, 'A')[0] == 10
+    assert _view_order(filtered_instance) == [ 3, 4, 5, 0, 1, 2 ]
+    await _sort(filtered_instance, coms, (filter_name, True))
     assert _view_order(filtered_instance) == [ 0, 3, 4, 5, 1, 2 ]

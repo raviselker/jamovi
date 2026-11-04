@@ -430,7 +430,59 @@ void DataSetW::refreshFilterState()
     }
 }
 
-bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool> &descending, bool exFiltered)
+vector<vector<double> > DataSetW::sortKeys(const vector<int> &columnIds, const vector<bool> &descending)
+{
+    vector<vector<double> > keys;
+    for (size_t i = 0; i < columnIds.size(); i++)
+        keys.push_back(getColumnById(columnIds[i]).sortKeys(descending[i]));
+    return keys;
+}
+
+static bool sortsBefore(const vector<vector<double> > &keys, int a, int b)
+{
+    for (const vector<double> &key : keys)
+    {
+        if (key[a] < key[b])
+            return true;
+        if (key[a] > key[b])
+            return false;
+    }
+    return false;
+}
+
+vector<char> DataSetW::searchRows(const string &search, const vector<int> &columnIds, bool whole)
+{
+    // the rows matching the search in any of the columns (every column if
+    // none are given); empty when there's no search
+
+    if (search.empty())
+        return vector<char>();
+
+    string text = search;
+    for (char &c : text)
+        c = tolower((unsigned char)c);
+
+    vector<char> matches(rowCount(), 0);
+
+    if (columnIds.empty())
+    {
+        for (int i = 0; i < columnCount(); i++)
+        {
+            ColumnW column = (*this)[i];
+            if (column.columnType() != ColumnType::FILTER && column.columnType() != ColumnType::NONE)
+                column.searchRows(text, whole, matches);
+        }
+    }
+    else
+    {
+        for (int columnId : columnIds)
+            getColumnById(columnId).searchRows(text, whole, matches);
+    }
+
+    return matches;
+}
+
+bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool> &descending, bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole)
 {
     // the view order is the data set rows displayed, in the order they're
     // displayed; exFiltered omits filtered rows. ties retain the data set
@@ -438,32 +490,81 @@ bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool>
 
     int nRows = rowCount();
 
+    vector<char> matches = searchRows(search, searchColumnIds, searchWhole);
+
     vector<int> rows;
     rows.reserve(nRows);
     for (int rowNo = 0; rowNo < nRows; rowNo++)
     {
-        if ( ! exFiltered || ! isRowFiltered(rowNo))
+        if (( ! exFiltered || ! isRowFiltered(rowNo)) && (matches.empty() || matches[rowNo]))
             rows.push_back(rowNo);
     }
 
-    vector<vector<double> > keys;
-    for (size_t i = 0; i < columnIds.size(); i++)
-        keys.push_back(getColumnById(columnIds[i]).sortKeys(descending[i]));
-
+    vector<vector<double> > keys = sortKeys(columnIds, descending);
     if ( ! keys.empty())
     {
         stable_sort(rows.begin(), rows.end(), [&keys](int a, int b) {
-            for (const vector<double> &key : keys)
-            {
-                if (key[a] < key[b])
-                    return true;
-                if (key[a] > key[b])
-                    return false;
-            }
-            return false;
+            return sortsBefore(keys, a, b);
         });
     }
 
+    return setViewOrder(rows);
+}
+
+bool DataSetW::updateViewOrder(bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole)
+{
+    // rows remain where they're displayed; rows no longer displayed are
+    // dropped, and newly displayed rows go last. rows edited so they no
+    // longer match the search remain, as they're being worked on, and so
+    // do rows added, as they're being filled in
+
+    int nRows = rowCount();
+    int nView = viewRowCount();
+    int nRowsBefore = viewLookup().rowCount();
+    ColumnW order = viewOrder();
+
+    vector<int> rows;
+    rows.reserve(nRows);
+    vector<bool> displayed(nRows, false);
+
+    for (int viewRow = 0; viewRow < nView; viewRow++)
+    {
+        int rowNo = order.raw<int>(viewRow);
+        if (rowNo < nRows && ( ! exFiltered || ! isRowFiltered(rowNo)))
+        {
+            rows.push_back(rowNo);
+            displayed[rowNo] = true;
+        }
+    }
+
+    vector<char> matches = searchRows(search, searchColumnIds, searchWhole);
+
+    for (int rowNo = 0; rowNo < nRows; rowNo++)
+    {
+        if ( ! displayed[rowNo] && ( ! exFiltered || ! isRowFiltered(rowNo)) && (matches.empty() || matches[rowNo] || rowNo >= nRowsBefore))
+            rows.push_back(rowNo);
+    }
+
+    return setViewOrder(rows);
+}
+
+bool DataSetW::isViewOrderSorted(const vector<int> &columnIds, const vector<bool> &descending)
+{
+    vector<vector<double> > keys = sortKeys(columnIds, descending);
+    ColumnW order = viewOrder();
+    int nView = viewRowCount();
+
+    for (int viewRow = 1; viewRow < nView; viewRow++)
+    {
+        if (sortsBefore(keys, order.raw<int>(viewRow), order.raw<int>(viewRow - 1)))
+            return false;
+    }
+    return true;
+}
+
+bool DataSetW::setViewOrder(const vector<int> &rows)
+{
+    int nRows = rowCount();
     int nView = (int)rows.size();
     ColumnW order = viewOrder();
     ColumnW lookup = viewLookup();

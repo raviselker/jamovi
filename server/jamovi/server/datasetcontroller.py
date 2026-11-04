@@ -182,6 +182,7 @@ class DataSetController:
             'columns_renamed': { },
             'rows_added_removed': False,
             'cell_blocks': [ ],
+            'resort': False,
         }
 
         n_rows_before = self._data.row_count
@@ -197,6 +198,7 @@ class DataSetController:
             self._on_dataset_ins_rows(request, response, changes, replay)
             self._on_dataset_mod_cols(request, response, changes)
             self._on_dataset_sort(request, response, changes)
+            self._on_dataset_search(request, changes)
             if request.incData:
                 self._apply_cells(request, response, changes)
         finally:
@@ -206,13 +208,16 @@ class DataSetController:
             response.filtersChanged = True
             self._data.refresh_filter_state()
 
-        # changes to the sort or the filters' visibility invalidate the view
-        # order themselves; changes to the data are checked for here
+        # changing the sort or the filters re-sorts the rows. changes to the
+        # data leave rows where they are, as moving them mid-edit would lose
+        # the user's place; the client offers a re-sort instead
         sort_ids = { column_id for column_id, _ in self._data.sort_keys }
-        if (changes['filters_changed']
-                or self._data.row_count != n_rows_before
-                or any(column.id in sort_ids for column in changes['columns'])):
+        data_edited = bool(changes['cell_blocks']) or changes['rows_added_removed']
+        if changes['resort'] or (changes['filters_changed'] and not data_edited):
             self._data.invalidate_view_order()
+        elif (self._data.row_count != n_rows_before
+                or any(column.id in sort_ids for column in changes['columns'])):
+            self._data.invalidate_view_order(rebuild=False)
 
         if self._data.refresh_view_order():
             response.viewOrderChanged = True
@@ -262,6 +267,7 @@ class DataSetController:
         sort_keys = self._data.sort_keys
         if request.incSchema and request.schema.HasField('sort'):
             sort_keys = [ (key.columnId, key.descending) for key in request.schema.sort.keys ]
+            changes['resort'] = True
 
         def is_sortable(column_id):
             try:
@@ -275,6 +281,22 @@ class DataSetController:
         if sort_keys != self._data.sort_keys:
             self._mod_tracker.log_sort_change(self._data.sort_keys)
             self._data.sort_keys = sort_keys
+            changes['resort'] = True
+
+    def _on_dataset_search(self, request, changes):
+        ids = { column.id for column in self._data }
+        if not (request.incSchema and request.schema.HasField('search')):
+            # a search in a deleted column ends, rather than widening to
+            # every column unnoticed
+            search = self._data.search
+            if search is not None and any(column_id not in ids for column_id in search[1]):
+                self._data.search = None
+                changes['resort'] = True
+            return
+        search_pb = request.schema.search
+        column_ids = [ column_id for column_id in search_pb.columnIds if column_id in ids ]
+        self._data.search = (search_pb.text, column_ids, search_pb.whole)
+        changes['resort'] = True
 
     def _on_dataset_get(self, request, response):
         if request.incSchema:
@@ -290,11 +312,11 @@ class DataSetController:
                 insertions.append(row_data)
 
         if insertions and not replay:
-            # rows can be appended while sorted; they sort last until filled in
-            if self._data.is_sorted and any(row_data.rowStart < self._data.row_count for row_data in insertions):
+            # rows can be appended while sorted
+            if (self._data.is_sorted or self._data.is_searching) and any(row_data.rowStart < self._data.row_count for row_data in insertions):
                 raise ForbiddenOp(
                     _('Could not insert rows'),
-                    _('You cannot insert rows while the data is sorted'))
+                    _('You cannot insert rows while the data is sorted or searched'))
             if self._data.ex_filtered and self._data.has_filters:
                 raise ForbiddenOp(
                     _('Could not insert rows'),
@@ -437,10 +459,10 @@ class DataSetController:
                 continue
 
             if not replay:
-                if self._data.is_sorted:
+                if self._data.is_sorted or self._data.is_searching:
                     raise ForbiddenOp(
                         _('Could not delete rows'),
-                        _('You cannot delete rows while the data is sorted'))
+                        _('You cannot delete rows while the data is sorted or searched'))
 
                 if self._data.ex_filtered and self._data.has_filters:
                     raise ForbiddenOp(
@@ -1157,6 +1179,11 @@ class DataSetController:
                 request.data[i].rowIndices[:] = block['row_indices']
             self._mod_tracker.log_data_write(block['column_start'], block['column_count'], block['row_indices'])
 
+        # view rows aren't data set rows when searching (fewer rows displayed),
+        # so how far the data set extends follows the rows resolved to
+        if bottom_most_row_index != -1:
+            bottom_most_row_index = max(max(block['row_indices'], default=-1) for block in data)
+
         cols_changed = set()  # schema changes to send
         reparse = set()
         recalc = set()  # computed columns that need to update from these changes
@@ -1600,10 +1627,18 @@ class DataSetController:
         schema.rowCountExFiltered = self._data.row_count_ex_filtered
         schema.filtersVisible = self._data.filters_visible
         schema.sort.SetInParent()
+        schema.sort.stale = self._data.view_order_stale
         for column_id, descending in self._data.sort_keys:
             key_pb = schema.sort.keys.add()
             key_pb.columnId = column_id
             key_pb.descending = descending
+        schema.search.SetInParent()
+        if self._data.search is not None:
+            text, column_ids, whole = self._data.search
+            schema.search.text = text
+            schema.search.columnIds[:] = column_ids
+            schema.search.whole = whole
+            schema.search.matches = self._data.view_row_count
 
         if self._data.row_tracker.is_edited:
             for range in self._data.row_tracker.removed_row_ranges:
