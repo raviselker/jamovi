@@ -901,3 +901,26 @@ body[dir='rtl'] .jmv-row-header-cell {
     border-width: 1px 0 1px 0 ;
     border-inline-end-width: 1px;
 }
+
+/* dimmed while a search runs; the results then appear at full strength */
+.jmv-table-body > .jmv-column,
+.jmv-column-row-header {
+    transition: opacity 100ms ease-out;
+}
+
+.jmv-tableview.search-pending .jmv-table-body > .jmv-column,
+.jmv-tableview.search-pending .jmv-column-row-header {
+    opacity: 0.45;
+}
+
+.jmv-tableview:not(.search-pending) .jmv-table-body > .jmv-column,
+.jmv-tableview:not(.search-pending) .jmv-column-row-header {
+    transition: none;  /* the results appear at once */
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jmv-tableview.search-pending .jmv-table-body > .jmv-column,
+    .jmv-tableview.search-pending .jmv-column-row-header {
+        transition: none;
+    }
+}

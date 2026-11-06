@@ -77,6 +77,7 @@ class TableView extends HTMLElement implements DataSetView {
     _searchList: VariableList;
     _sortList: VariableList;
     $searchCount: HTMLElement;
+    _searchRequest: number;
     _searchOpen = false;
     _searchColumnIds: number[] = [ ];
     _searchWhole = false;
@@ -643,6 +644,7 @@ class TableView extends HTMLElement implements DataSetView {
         this.$searchInput.addEventListener('input', () => {
             this.$searchClear.style.visibility = this.$searchInput.value !== '' ? '' : 'hidden';
             clearTimeout(this._searchTimer);
+            this.classList.add('search-pending');  // dims from the first keystroke until the results show
             this._searchTimer = setTimeout(() => this._applySearch(), 250);
         });
         this.$searchInput.addEventListener('keydown', (event: KeyboardEvent) => {
@@ -753,14 +755,38 @@ class TableView extends HTMLElement implements DataSetView {
         this._updateSearch();
         let text = this.$searchInput.value;
         let current = this.model.attributes.search;
-        if (text === '' && current.text === '')
+        if (text === '' && current.text === '') {
+            this.classList.remove('search-pending');
             return;
+        }
+        // the rows dim while the search runs, so the new rows appearing is expected
+        let request = (this._searchRequest ?? 0) + 1;
+        this._searchRequest = request;
+        this.classList.add('search-pending');
         try {
             await this.model.setSearch({ text, columnIds: this._searchColumnIds, whole: this._searchWhole });
+            await this._nextCells();
         }
         catch (error) {
             this.controller._notifyEditProblem({ title: error.message, message: error.cause, type: 'error' });
         }
+        finally {
+            if (this._searchRequest === request)  // a later search keeps them dimmed
+                this.classList.remove('search-pending');
+        }
+    }
+
+    _nextCells(): Promise<void> {
+        // the new rows' cells are read after the response; nothing is read when the rows didn't change
+        return new Promise(resolve => {
+            let done = () => {
+                clearTimeout(timer);
+                this.model.off('cellsChanged', done);
+                resolve();
+            };
+            let timer = setTimeout(done, 300);
+            this.model.on('cellsChanged', done);
+        });
     }
 
     _useVariableList($select: HTMLSelectElement, list: VariableList, columns: () => Column[], excludeNone: boolean) {
