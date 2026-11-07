@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets users find data quickly by hiding the data view rows that do not contain a piece of text, across all columns or one column, without changing the data set, analyses or undo history.
+Lets users find data quickly by hiding the data view rows that do not contain a piece of text, across all columns or per column, without changing the data set, analyses or undo history.
 
 ## ADDED Requirements
 
@@ -39,23 +39,46 @@ By default, a row SHALL match when any searchable column contains the text as pa
 The search field SHALL have a "Match whole cell" toggle, off when the bar opens. When on, a row SHALL match only when a searched cell's whole displayed value equals the text, ignoring case.
 
 #### Scenario: Likert answers
-- **WHEN** "Match whole cell" is on and the user searches Q3 for "1"
+- **WHEN** "Match whole cell" is on and the user types "1" in Q3's column search box
 - **THEN** rows where Q3 is 1 match, and rows where Q3 is 10 or 11 do not
 
-### Requirement: Searching one column
-The search SHALL search all columns by default. The user SHALL be able to limit it to one column through a menu on the search field's magnifier, or with "Search in Column" in the variable and filter context menus, which searches the selected column. The field SHALL show the column as a removable tag. Removing the tag SHALL search all columns again.
+#### Scenario: One toggle for every search
+- **WHEN** "Match whole cell" is on
+- **THEN** it applies to the main field and to every column search box
+
+### Requirement: Column search
+The main field SHALL search all columns. A toggle button beside it, with a badge counting the columns searched, SHALL show or hide a row with a search box under each column header. Each box SHALL search only its column, and a row SHALL be displayed only when it matches the main field (if it has text) and every box with text. Hiding the row SHALL clear its boxes. The user interface SHALL call this "Column search", never "filter", so it is not confused with the data filters.
+
+#### Scenario: Subgroup
+- **WHEN** the user types "control" in Group's box and "1" in Q3's box
+- **THEN** only rows where Group contains "control" and Q3 contains "1" are displayed, and the badge shows 2
+
+#### Scenario: Lookup
+- **WHEN** the user types "10" in Subject's box and "2" in Session's box, with "Match whole cell" on
+- **THEN** only subject 10's session 2 row is displayed
 
 #### Scenario: Search in Column
 - **WHEN** the user right-clicks column Q3 and chooses "Search in Column"
-- **THEN** the bar opens with the field focused, tagged Q3, and searches only Q3
+- **THEN** the bar and the column search row open with Q3's box focused
 
-#### Scenario: Removing the scope
-- **WHEN** the user clicks the × on the Q3 tag
-- **THEN** the search covers all columns again
+#### Scenario: Hiding the row
+- **WHEN** boxes have text and the user turns column search off
+- **THEN** the boxes are cleared and only the main field's search remains
 
 #### Scenario: Searched column deleted
-- **WHEN** the column being searched is deleted
-- **THEN** the search ends, rather than widening to all columns
+- **WHEN** a column with text in its box is deleted
+- **THEN** its term is dropped and the other searches stay
+
+### Requirement: Column search layout
+Each box SHALL stay aligned with its column when columns are resized, added or removed, when the data view scrolls, and when the row number column changes width. A box with text SHALL be highlighted and its column header tinted. The row SHALL slide open and closed without the column headers moving, and without motion when the system asks for reduced motion. Typing in a box SHALL keep focus in it while the results update.
+
+#### Scenario: Row numbers narrow
+- **WHEN** a search leaves only rows numbered below 100 in a data set of 150 rows
+- **THEN** the boxes stay aligned with their columns
+
+#### Scenario: Focus kept
+- **WHEN** the user types in Group's box and the matching rows change
+- **THEN** the box keeps the focus and the caret
 
 ### Requirement: Opening and closing the search
 Ctrl/Cmd+F in the data view and the ribbon's Search button SHALL open the bar and focus the field, selecting any existing text. When the field is empty and nothing is sorted, Ctrl/Cmd+F in the field or the Search button SHALL close the bar again. With text or a sort, they SHALL select the text instead.
@@ -79,8 +102,19 @@ The search SHALL apply about 250 ms after the user stops typing, and immediately
 - **WHEN** the field contains text and the user presses Esc
 - **THEN** the text is cleared, all rows are displayed and the bar stays open
 
+### Requirement: Search feedback
+While a search is being applied, the displayed rows SHALL dim until the new rows are shown, without motion. Displayed cells SHALL highlight the matched text: a column's own term where it has one, otherwise the main field's text.
+
+#### Scenario: Results arrive
+- **WHEN** the user types in a search field
+- **THEN** the rows dim from the first keystroke and the matching rows appear undimmed
+
+#### Scenario: Highlight
+- **WHEN** the user searches for "contr"
+- **THEN** "Contr" is highlighted in each displayed "Control" cell
+
 ### Requirement: Match count
-While a search is active, the bar SHALL show how many rows match, as "1 row" or "N rows", including 0.
+While a search is active (the main field or any column search box), the bar SHALL show how many rows match, as "1 row" or "N rows", including 0.
 
 #### Scenario: No matches
 - **WHEN** the user searches for text that no cell contains
