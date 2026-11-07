@@ -924,3 +924,169 @@ body[dir='rtl'] .jmv-row-header-cell {
         transition: none;
     }
 }
+
+/* a box under each column header, for a term per column */
+.jmv-filter-row {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.jmv-filter-cell {
+    pointer-events: auto;
+    position: absolute;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    background: linear-gradient(#e9eff7, #dfe7f2);
+    border-inline-end: 1px solid #d3dceb;
+    border-bottom: 1px solid #ACACAC;
+}
+
+.jmv-filter-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: calc(100% - 6px);
+    padding: 0 5px 0 7px;
+    background-color: white;
+    border: 1px solid #c3d1e5;
+    border-radius: 6px;
+    box-shadow: inset 0 1px 1px rgba(40, 60, 100, 0.06);
+    cursor: text;
+    font-size: 90%;
+    transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.jmv-filter-cell:hover .jmv-filter-field {
+    border-color: #9fb6d6;
+}
+
+.jmv-filter-field .jmv-search-field-glyph {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    opacity: 0.45;
+}
+
+.jmv-filter-box {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: #333;
+}
+
+.jmv-filter-box::placeholder {
+    color: #a9b3c2;
+}
+
+.jmv-filter-cell:not(.active) .jmv-search-field-clear {
+    display: none;
+}
+
+.jmv-filter-cell.active .jmv-filter-field {
+    background-color: #fff8e0;
+    border-color: #f0d27a;
+    box-shadow: none;
+}
+
+.jmv-filter-cell.active .jmv-filter-box {
+    color: #5a4300;
+    font-weight: 600;
+}
+
+.jmv-filter-cell.active .jmv-search-field-glyph {
+    opacity: 0.8;
+}
+
+.jmv-filter-cell .jmv-filter-field:focus-within {
+    background-color: white;
+    border-color: #3E6DA9;
+    box-shadow: 0 0 0 2px #c5d6ec;
+}
+
+.jmv-filter-cell.active .jmv-filter-field:focus-within .jmv-filter-box {
+    color: #333;
+}
+
+.jmv-tableview .jmv-column-header.filtered {
+    background-color: #f6ecc8;
+    box-shadow: inset 0 -2px 0 #e0b84a;
+}
+
+.jmv-column.searched > .jmv-column-cell {
+    background-color: #fffcf0;
+}
+
+.jmv-column-cell mark {
+    background-color: #ffe58f;
+    color: inherit;
+    border-radius: 2px;
+}
+
+/* beside the search field: shows the boxes; the badge counts the columns searched */
+.jmv-sort-bar .jmv-column-search-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 24px;
+    min-width: 26px;
+    box-sizing: border-box;
+    padding: 0 4px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    color: #3E6DA9;
+    cursor: pointer;
+}
+
+.jmv-sort-bar .jmv-column-search-button:hover {
+    background-color: #e8eef7;
+}
+
+.jmv-sort-bar .jmv-column-search-button[aria-pressed=true] {
+    background-color: #dfe8f5;
+    border-color: #b7c9e2;
+}
+
+.jmv-column-search-icon {
+    width: 20px;
+    height: 16px;
+    background: url('../assets/menu-search-column.svg') center / contain no-repeat;
+}
+
+.jmv-column-search-badge:empty {
+    display: none;
+}
+
+.jmv-column-search-badge {
+    background-color: #3E6DA9;
+    color: white;
+    border-radius: 8px;
+    font-size: 10px;
+    line-height: 14px;
+    padding: 0 5px;
+}
+
+.jmv-filter-field .jmv-search-field-clear {
+    flex: none;
+    border: none;
+    background: none;
+    padding: 0 2px;
+    margin: 0;
+    color: #778;
+    font: inherit;
+    font-size: 120%;
+    line-height: 1;
+    cursor: pointer;
+}

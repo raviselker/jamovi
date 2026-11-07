@@ -139,7 +139,14 @@ export interface ViewSearch {
     text: string,  // empty for no search
     columnIds: number[],  // none searches every column
     whole: boolean,  // the whole cell must match
-    matches?: number
+    matches?: number,
+    terms?: SearchTerm[]  // one per column; a row must match every one
+}
+
+export interface SearchTerm {
+    columnId: number,
+    text: string,
+    whole: boolean
 }
 
 export interface Viewport {
@@ -304,7 +311,7 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
             rowCountExFiltered: 0,
             sortKeys: [ ],
             sortStale: false,
-            search: { text: '', columnIds: [ ], whole: false, matches: 0 }
+            search: { text: '', columnIds: [ ], whole: false, matches: 0, terms: [ ] }
         }, extra) as M);
     }
 
@@ -351,18 +358,20 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
     }
 
     isSearching(): boolean {
-        return this.attributes.search.text !== '';
+        return this.attributes.search.text !== '' || (this.attributes.search.terms ?? [ ]).length > 0;
     }
 
     _readSearchPB(searchPB: any): ViewSearch {
+        let terms = (searchPB?.terms ?? [ ]).map(term => ({ columnId: term.columnId, text: term.text, whole: term.whole }));
+        let matches = searchPB?.matches ?? 0;
         if ( ! searchPB || ! searchPB.text)
-            return { text: '', columnIds: [ ], whole: false, matches: 0 };
-        return { text: searchPB.text, columnIds: [ ...searchPB.columnIds ], whole: searchPB.whole, matches: searchPB.matches };
+            return { text: '', columnIds: [ ], whole: false, matches, terms };
+        return { text: searchPB.text, columnIds: [ ...searchPB.columnIds ], whole: searchPB.whole, matches, terms };
     }
 
     _setSearch(search: ViewSearch) {
         let current = this.attributes.search;
-        if (current.text === search.text && current.whole === search.whole && current.matches === search.matches
+        if (current.text === search.text && current.whole === search.whole && current.matches === search.matches && JSON.stringify(current.terms ?? [ ]) === JSON.stringify(search.terms ?? [ ])
                 && current.columnIds.length === search.columnIds.length && current.columnIds.every((id, i) => id === search.columnIds[i]))
             return;
         this.set('search', search);
@@ -381,6 +390,13 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
         datasetPB.schema.search.text = search.text;
         datasetPB.schema.search.columnIds = search.columnIds;
         datasetPB.schema.search.whole = search.whole;
+        datasetPB.schema.search.terms = (search.terms ?? this.attributes.search.terms ?? [ ]).map(term => {
+            let termPB = new coms.Messages.DataSetSchema.ViewSearch.Term();
+            termPB.columnId = term.columnId;
+            termPB.text = term.text;
+            termPB.whole = term.whole;
+            return termPB;
+        });
 
         let request = new coms.Messages.ComsMessage();
         request.payload = datasetPB.toArrayBuffer();

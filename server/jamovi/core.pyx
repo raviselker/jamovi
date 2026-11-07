@@ -70,8 +70,8 @@ cdef extern from "datasetw.h":
         void deleteRows(int start, int end) except +
         void deleteColumns(int start, int end) except +
         void refreshFilterState() except +
-        bool refreshViewOrder(const vector[int] &columnIds, const vector[bool] &descending, bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole) except +
-        bool updateViewOrder(bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole) except +
+        bool refreshViewOrder(const vector[int] &columnIds, const vector[bool] &descending, bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole, const vector[int] &termIds, const vector[string] &termTexts, const vector[bool] &termWhole) except +
+        bool updateViewOrder(bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole, const vector[int] &termIds, const vector[string] &termTexts, const vector[bool] &termWhole) except +
         bool isViewOrderSorted(const vector[int] &columnIds, const vector[bool] &descending) except +
         int viewRowCount() except +
         int getDataIndex(int viewRow) except +
@@ -207,15 +207,21 @@ cdef class DataSet:
     def refresh_filter_state(self):
         self._this.refreshFilterState()
 
-    def refresh_view_order(self, sort_keys, ex_filtered, search=None):
+    def refresh_view_order(self, sort_keys, ex_filtered, search=None, terms=()):
         cdef vector[int] column_ids = [ column_id for column_id, _ in sort_keys ]
         cdef vector[bool] descending = [ desc for _, desc in sort_keys ]
         text, search_ids, whole = search or ('', [ ], False)
-        return self._this.refreshViewOrder(column_ids, descending, ex_filtered, text.encode('utf-8'), search_ids, whole)
+        term_ids = [ term[0] for term in terms ]
+        term_texts = [ term[1].encode('utf-8') for term in terms ]
+        term_whole = [ term[2] for term in terms ]
+        return self._this.refreshViewOrder(column_ids, descending, ex_filtered, text.encode('utf-8'), search_ids, whole, term_ids, term_texts, term_whole)
 
-    def update_view_order(self, ex_filtered, search=None):
+    def update_view_order(self, ex_filtered, search=None, terms=()):
         text, search_ids, whole = search or ('', [ ], False)
-        return self._this.updateViewOrder(ex_filtered, text.encode('utf-8'), search_ids, whole)
+        term_ids = [ term[0] for term in terms ]
+        term_texts = [ term[1].encode('utf-8') for term in terms ]
+        term_whole = [ term[2] for term in terms ]
+        return self._this.updateViewOrder(ex_filtered, text.encode('utf-8'), search_ids, whole, term_ids, term_texts, term_whole)
 
     def is_view_order_sorted(self, sort_keys):
         cdef vector[int] column_ids = [ column_id for column_id, _ in sort_keys ]

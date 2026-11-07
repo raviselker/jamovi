@@ -29,8 +29,8 @@ public:
     void deleteColumns(int rowStart, int rowEnd);
     void setRowCount(size_t count);
     void refreshFilterState();
-    bool refreshViewOrder(const std::vector<int> &columnIds, const std::vector<bool> &descending, bool exFiltered, const std::string &search, const std::vector<int> &searchColumnIds, bool searchWhole);
-    bool updateViewOrder(bool exFiltered, const std::string &search, const std::vector<int> &searchColumnIds, bool searchWhole);
+    bool refreshViewOrder(const std::vector<int> &columnIds, const std::vector<bool> &descending, bool exFiltered, const std::string &search, const std::vector<int> &searchColumnIds, bool searchWhole, const std::vector<int> &termIds, const std::vector<std::string> &termTexts, const std::vector<bool> &termWhole);
+    bool updateViewOrder(bool exFiltered, const std::string &search, const std::vector<int> &searchColumnIds, bool searchWhole, const std::vector<int> &termIds, const std::vector<std::string> &termTexts, const std::vector<bool> &termWhole);
     bool isViewOrderSorted(const std::vector<int> &columnIds, const std::vector<bool> &descending);
 
     ColumnW operator[](int index);
@@ -61,6 +61,7 @@ protected:
     std::vector<std::vector<double> > sortKeys(const std::vector<int> &columnIds, const std::vector<bool> &descending);
     bool setViewOrder(const std::vector<int> &rows);
     std::vector<char> searchRows(const std::string &search, const std::vector<int> &columnIds, bool whole);
+    std::vector<char> matchRows(const std::string &search, const std::vector<int> &searchColumnIds, bool searchWhole, const std::vector<int> &termIds, const std::vector<std::string> &termTexts, const std::vector<bool> &termWhole);
 
 private:
 

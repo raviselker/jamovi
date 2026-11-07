@@ -70,16 +70,18 @@ class TableView extends HTMLElement implements DataSetView {
     $sortBar: HTMLElement;
     $sortItems: HTMLElement;
     $searchInput: HTMLInputElement;
-    $searchScope: HTMLElement;
     $searchWhole: HTMLElement;
     $searchClear: HTMLElement;
-    $searchIn: HTMLSelectElement;
-    _searchList: VariableList;
     _sortList: VariableList;
     $searchCount: HTMLElement;
+    _filterRowAnimation: Animation[] | null = null;
+    $columnSearchButton: HTMLElement;
+    $filterRow: HTMLElement;
+    _filterRowHeight = 28;  // taller than a data row, so the boxes are comfortable to type in
+    _filtersShown = false;  // a box under each column header, for a term per column
+    _terms = new Map<number, string>();  // column id to its term, as typed
     _searchRequest: number;
     _searchOpen = false;
-    _searchColumnIds: number[] = [ ];
     _searchWhole = false;
     _searchTimer: ReturnType<typeof setTimeout>;
     _sortBarMoved: number;
@@ -245,6 +247,8 @@ class TableView extends HTMLElement implements DataSetView {
 
         this.$container = this.querySelector('.jmv-table-container');
         this.$header    = this.querySelector('.jmv-table-header');
+        this.$filterRow = h('div', { class: 'jmv-filter-row', role: 'row', 'aria-label': _('Column search') });
+        this.$header.append(this.$filterRow);
         this.$sortBar   = this.querySelector('.jmv-sort-bar');
         this._createSearch();
         this.$body      = this.$container.querySelector('.jmv-table-body');
@@ -601,45 +605,26 @@ class TableView extends HTMLElement implements DataSetView {
 
     _createSearch() {
         this.$searchInput = h('input', { class: 'jmv-sort-bar-search-input jmv-search-field-input', 'aria-label': _('Search the data'), spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
-        this.$searchScope = h('button', { class: 'jmv-sort-bar-search-scope', title: _('Search all columns instead') });
         this.$searchWhole = h('button', { class: 'jmv-sort-bar-search-whole', title: _('Match whole cell'), 'aria-pressed': 'false' }, 'ab');
         this.$searchClear = h('button', { class: 'jmv-sort-bar-search-clear jmv-search-field-clear', title: _('Clear the search'), 'aria-label': _('Clear the search') }, '\u00D7');
         this.$searchCount = h('span', { class: 'jmv-sort-bar-search-count jmv-search-count', 'aria-live': 'polite' });
         this.$sortItems = h('div', { class: 'jmv-sort-bar-sort' });
 
-        // the icon is a menu of the columns to search in
-        this.$searchIn = h('select', { class: 'jmv-sort-bar-search-in', 'aria-label': _('Search in'), title: _('Search in') }) as HTMLSelectElement;
-        this.$searchIn.addEventListener('click', (event) => event.stopPropagation());
-        this.$searchIn.addEventListener('change', () => {
-            let id = parseInt(this.$searchIn.value);
-            this._searchColumnIds = id ? [ id ] : [ ];
-            this._applySearch();
-            this.$searchInput.focus();
-        });
-
-        this._searchList = new VariableList();
-        this._searchList.querySelector('.none-item').textContent = _('All columns');
-        this._useVariableList(this.$searchIn, this._searchList, () => this._searchableColumns(), false);
         this._sortList = new VariableList();
         this._sortList.addEventListener('selected-variable', (event: CustomEvent<{ id: number }>) => {
             dropdown.hide();
             this.controller.sortColumn(event.detail.id);
         });
 
-        this._searchList.addEventListener('selected-variable', (event: CustomEvent<{ id: number }>) => {
-            let id = event.detail.id;
-            this._searchColumnIds = id ? [ id ] : [ ];
-            this.$searchIn.value = String(id ?? 0);
-            dropdown.hide();
-            this._applySearch();
-            this.$searchInput.focus();
-        });
-
         let $search = h('div', { class: 'jmv-sort-bar-search jmv-search-field' },
-            h('span', { class: 'jmv-sort-bar-search-icon' }, h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }), this.$searchIn),
-            this.$searchScope, this.$searchInput, this.$searchClear, this.$searchWhole);
+            h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }),
+            this.$searchInput, this.$searchClear, this.$searchWhole);
         $search.addEventListener('click', () => this.$searchInput.focus());
-        this.$sortBar.append($search, this.$searchCount, this.$sortItems);
+        this.$columnSearchButton = h('button', { class: 'jmv-column-search-button', title: _('Search each column separately'), 'aria-label': _('Column search'), 'aria-pressed': 'false' },
+            h('span', { class: 'jmv-column-search-icon', 'aria-hidden': 'true' }),
+            h('span', { class: 'jmv-column-search-badge' }));
+        this.$columnSearchButton.addEventListener('click', () => this._setFiltersShown( ! this._filtersShown));
+        this.$sortBar.append($search, this.$columnSearchButton, this.$searchCount, this.$sortItems);
 
         this.$searchInput.addEventListener('input', () => {
             this.$searchClear.style.visibility = this.$searchInput.value !== '' ? '' : 'hidden';
@@ -670,12 +655,6 @@ class TableView extends HTMLElement implements DataSetView {
                 }
             }
         });
-        this.$searchScope.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this._searchColumnIds = [ ];
-            this._applySearch();
-            this.$searchInput.focus();
-        });
         this.$searchClear.addEventListener('click', (event) => {
             event.stopPropagation();
             this.$searchInput.value = '';
@@ -689,43 +668,39 @@ class TableView extends HTMLElement implements DataSetView {
             this.$searchInput.focus();
         });
 
-        this.model.on('columnsChanged', () => {
-            if (document.activeElement !== this.$searchIn)
-                this._updateSearchColumns();
-        });
-        this.controller.on('openSearch', (columnIds?: number[]) => this.openSearch(columnIds));
+        // searching one column is its box beneath the header
+        this.controller.on('openSearch', (columnIds?: number[]) => columnIds?.length ? this.openColumnFilter(columnIds[0]) : this.openSearch());
         this.controller.on('toggleSearch', () => {
             // an empty bar closes again; a search or sort is never lost to it
             if (this._searchOpen && this.$searchInput.value === '' && this.model.attributes.sortKeys.length === 0)
                 this._closeSearch();
             else
-                this.openSearch(undefined, true);
+                this.openSearch(true);
         });
         this.model.on('change:search', () => {
-            // e.g. a searched column was deleted
             let search = this.model.attributes.search;
-            if (search.text === '' && this._searchColumnIds.some(id => ! this.model.getColumnById(id))) {
-                // the column searched was deleted, which ends the search
-                this._searchColumnIds = [ ];
-                this.$searchInput.value = '';
-            }
-            if (search.text !== '') {
-                this._searchColumnIds = search.columnIds;
+            if (search.text !== '')
                 this._searchWhole = search.whole;
-            }
+            // a column deleted takes its term with it
+            for (let columnId of [ ...this._terms.keys() ])
+                if ( ! this.model.getColumnById(columnId))
+                    this._terms.delete(columnId);
             if (document.activeElement !== this.$searchInput)
                 this.$searchInput.value = search.text;
             this._updateSearch();
             this._updateSortBar();
+            let termIds = new Set((search.terms ?? [ ]).map(term => term.columnId));
+            for (let $header of this.$headers)
+                $header.classList.toggle('filtered', termIds.has(parseInt($header.dataset.id)));
+            for (let $column of this.$columns)
+                $column?.classList.toggle('searched', termIds.has(parseInt($column.dataset.id)));
+            this._highlightMatches();
         });
+        this.model.on('cellsChanged', () => this._highlightMatches());
+        this.model.on('columnsChanged', () => this._layoutFilterRow());
     }
 
-    openSearch(columnIds?: number[], fromRibbon = false) {
-        // ctrl+f searches every column, unless a search is under way
-        if (columnIds)
-            this._searchColumnIds = columnIds;
-        else if (this.$searchInput.value === '')
-            this._searchColumnIds = [ ];
+    openSearch(fromRibbon = false) {
         this._searchOpen = true;
         this._updateSearch();
         this._updateSortBar();
@@ -736,8 +711,19 @@ class TableView extends HTMLElement implements DataSetView {
             this.$searchInput.focus();
             this.$searchInput.select();
         }, fromRibbon ? 250 : 0);
-        if (columnIds && this.$searchInput.value !== '')
-            this._applySearch();
+    }
+
+    openColumnFilter(columnId: number) {
+        this._searchOpen = true;
+        if ( ! this._filtersShown)
+            this._setFiltersShown(true);
+        this._updateSortBar();
+        let $input = this.$filterRow.querySelector<HTMLInputElement>(`input[data-id="${ columnId }"]`);
+        // after the context menu has closed and handed the focus back
+        setTimeout(() => {
+            $input?.focus({ preventScroll: true });
+            $input?.select();
+        }, 0);
     }
 
     _closeSearch() {
@@ -755,7 +741,8 @@ class TableView extends HTMLElement implements DataSetView {
         this._updateSearch();
         let text = this.$searchInput.value;
         let current = this.model.attributes.search;
-        if (text === '' && current.text === '') {
+        let terms = [ ...this._terms ].filter(([ , term ]) => term !== '').map(([ columnId, term ]) => ({ columnId, text: term, whole: this._searchWhole }));  // 'ab' applies to every search
+        if (text === '' && current.text === '' && terms.length === 0 && (current.terms ?? [ ]).length === 0) {
             this.classList.remove('search-pending');
             return;
         }
@@ -764,7 +751,7 @@ class TableView extends HTMLElement implements DataSetView {
         this._searchRequest = request;
         this.classList.add('search-pending');
         try {
-            await this.model.setSearch({ text, columnIds: this._searchColumnIds, whole: this._searchWhole });
+            await this.model.setSearch({ text, columnIds: [ ], whole: this._searchWhole, terms });
             await this._nextCells();
         }
         catch (error) {
@@ -773,6 +760,30 @@ class TableView extends HTMLElement implements DataSetView {
         finally {
             if (this._searchRequest === request)  // a later search keeps them dimmed
                 this.classList.remove('search-pending');
+        }
+    }
+
+    _highlightMatches() {
+        // marks the text matched in the cells displayed: a column's own term, else the search of every column
+        let search = this.model.attributes.search;
+        let terms = new Map((search.terms ?? [ ]).map(term => [ term.columnId, term ]));
+        for (let $column of this.$columns) {
+            if ( ! $column)
+                continue;
+            let term = terms.get(parseInt($column.dataset.id));
+            let text = (term ? term.text : search.text).toLowerCase();
+            for (let cell of $column.children as HTMLCollectionOf<HTMLElement>) {
+                if ( ! cell.classList.contains('jmv-column-cell') || cell.dataset.type === 'bool')
+                    continue;
+                let value = cell.textContent;
+                let at = text === '' ? -1 : value.toLowerCase().indexOf(text);
+                if (at === -1) {
+                    if (cell.firstElementChild?.tagName === 'MARK' || cell.querySelector('mark'))
+                        cell.textContent = value;
+                    continue;
+                }
+                cell.replaceChildren(value.slice(0, at), h('mark', { }, value.slice(at, at + text.length)), value.slice(at + text.length));
+            }
         }
     }
 
@@ -822,31 +833,16 @@ class TableView extends HTMLElement implements DataSetView {
         });
     }
 
-    _searchableColumns() {
-        return this.model.attributes.columns.filter(column => this.controller._isSortable(column) && ! column.hidden);
-    }
-
-    _updateSearchColumns() {
-        // the options hold the value for the keyboard and screen readers;
-        // the list shown is _searchList
-        this.$searchIn.replaceChildren(
-            h('option', { value: '0' }, _('All columns')),
-            ...this._searchableColumns().map(column => h('option', { value: String(column.id) }, column.name)));
-        this.$searchIn.value = this._searchColumnIds.length === 1 ? String(this._searchColumnIds[0]) : '0';
-    }
-
     _updateSearch() {
-        if (document.activeElement !== this.$searchIn)
-            this._updateSearchColumns();
-        let names = this._searchColumnIds.map(id => this.model.getColumnById(id)?.name).filter(name => name);
-        this.$searchScope.textContent = names.length > 0 ? `${ names.join(', ') } \u00D7` : '';
-        this.$searchScope.style.display = names.length > 0 ? '' : 'none';
-        this.$searchInput.placeholder = names.length > 0 ? _('Search') : _('Search all columns');
+        this.$searchInput.placeholder = _('Search all columns');
+        let nTerms = [ ...this._terms.values() ].filter(term => term !== '').length;
+        this.$columnSearchButton.setAttribute('aria-pressed', this._filtersShown ? 'true' : 'false');
+        this.$columnSearchButton.querySelector('.jmv-column-search-badge').textContent = nTerms > 0 ? String(nTerms) : '';
         this.$searchWhole.setAttribute('aria-pressed', this._searchWhole ? 'true' : 'false');
         this.$searchClear.style.visibility = this.$searchInput.value !== '' ? '' : 'hidden';
 
         let search = this.model.attributes.search;
-        if (search.text === '')
+        if ( ! this.model.isSearching())
             this.$searchCount.textContent = '';
         else if (search.matches === 1)
             this.$searchCount.textContent = _('1 row');
@@ -857,7 +853,7 @@ class TableView extends HTMLElement implements DataSetView {
     _updateSortBar() {
         let wasOpen = this.$sortBar.classList.contains('open');
         let sortKeys = this.model.attributes.sortKeys;
-        let open = sortKeys.length > 0 || this._searchOpen || this.model.isSearching();
+        let open = sortKeys.length > 0 || this._searchOpen || this.model.isSearching() || this._filtersShown;
         this.classList.toggle('sorting', open);  // header sort arrows on hover while the bar is open
         let items: HTMLElement[] = [ ];
 
@@ -891,6 +887,8 @@ class TableView extends HTMLElement implements DataSetView {
 
             let $clear = h('button', { class: 'jmv-sort-bar-clear', title: _('Clear the search and the sort') }, _('Clear'));
             $clear.addEventListener('click', () => {
+                if (this._filtersShown)
+                    this._setFiltersShown(false);
                 this._closeSearch();
                 if (sortKeys.length > 0)
                     this.controller.setSort([ ]);
@@ -1951,7 +1949,9 @@ class TableView extends HTMLElement implements DataSetView {
         this._focusCell.setAttribute('aria-activedescendant', currentReadout === 'gridCellReabable1' ? 'gridCellReabable2' : 'gridCellReabable1');
 
         if (interactionManager.getMode() === 'default') {
-            if (document.activeElement !== this._focusCell)
+            // not while typing a search; the rows refreshing would take the focus
+            let searching = this.$sortBar.contains(document.activeElement) || this.$filterRow.contains(document.activeElement);
+            if (document.activeElement !== this._focusCell && ! searching)
                 this._focusCell.focus({preventScroll: true});
         }
     }
@@ -2855,6 +2855,7 @@ class TableView extends HTMLElement implements DataSetView {
 
         this.classList.remove('resizing');
 
+        this._layoutFilterRow();
         this._resizeHandler();
     }
 
@@ -3034,6 +3035,7 @@ class TableView extends HTMLElement implements DataSetView {
                     $column.style.insetInlineStart = `${left}px`;
                     $header.style.insetInlineStart = `${left}px`;
                 }
+                this._layoutFilterRow();
             }
         }
     }
@@ -3236,6 +3238,118 @@ class TableView extends HTMLElement implements DataSetView {
         this.viewport = { top : topRow, bottom : botRow, left : leftColumn, right : rightColumn };
 
         this.refreshCells(oldViewport, this.viewport);
+        this._layoutFilterRow();
+    }
+
+    _setFiltersShown(shown: boolean) {
+        this._filtersShown = shown;
+        let from = this._rowHeight + (shown ? 0 : this._filterRowHeight);
+        let to = this._rowHeight + (shown ? this._filterRowHeight : 0);
+        this.style.gridTemplateRows = `auto ${ to }px 1fr 22px`;
+        this.$header.style.height = `${ to }px`;
+        this.classList.toggle('filters-shown', shown);
+        if ( ! shown && this._terms.size > 0) {
+            // hidden terms would search unseen
+            this._terms.clear();
+            for (let $input of this.$filterRow.querySelectorAll('input'))
+                $input.value = '';
+            this._applySearch();
+        }
+        if (shown)
+            this._layoutFilterRow();
+        this._updateSearch();
+        this._updateSortBar();
+
+        // the header row grows, revealing the boxes, and the grid moves down with it (like the bar opening)
+        let reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let timing: KeyframeAnimationOptions = { duration: reduce ? 0 : 200, easing: 'ease-out' };
+        this._filterRowAnimation?.forEach(animation => animation.cancel());
+        this._filterRowAnimation = [
+            this.animate([ { gridTemplateRows: `auto ${ from }px 1fr 22px` }, { gridTemplateRows: `auto ${ to }px 1fr 22px` } ], timing),
+            this.$header.animate([ { height: `${ from }px` }, { height: `${ to }px` } ], timing),
+            this.$filterRow.animate([ { opacity: shown ? 0 : 1 }, { opacity: shown ? 1 : 0 } ], timing),
+        ];
+        this._filterRowAnimation[0].onfinish = () => {
+            this._filterRowAnimation = null;
+            if ( ! this._filtersShown)
+                this._layoutFilterRow();  // the boxes go once they're out of sight
+            this._resizeHandler();
+        };
+        if (shown)
+            this.$filterRow.querySelector('input')?.focus({ preventScroll: true });
+    }
+
+    _layoutFilterRow() {
+        if ( ! this._filtersShown) {
+            this.$filterRow.replaceChildren();
+            return;
+        }
+        // shortcut: a box for every column, not only those in view; fine to a few hundred columns, virtualise past that
+        let existing = new Map<number, HTMLElement>();
+        for (let $cell of this.$filterRow.querySelectorAll<HTMLElement>('.jmv-filter-cell'))
+            existing.set(parseInt($cell.dataset.id), $cell);
+        for (let column of this.model.attributes.columns) {
+            if (column.dIndex === -1 || column.columnType === 'none' || this._lefts[column.dIndex] === undefined)
+                continue;
+            let $cell = existing.get(column.id);
+            existing.delete(column.id);
+            if ( ! $cell) {
+                $cell = this._createFilterBox(column.id);
+                this.$filterRow.append($cell);  // the others stay put: moving a box would take its focus
+            }
+            $cell.style.insetInlineStart = `${ this._lefts[column.dIndex] }px`;
+            $cell.style.width = `${ this._widths[column.dIndex] }px`;
+            $cell.style.top = `${ this._rowHeight }px`;
+            $cell.style.height = `${ this._filterRowHeight }px`;
+            let $input = $cell.querySelector('input');
+            $input.setAttribute('aria-label', _('Search {0}', [ column.name ]));
+            $input.placeholder = _('Search');
+        }
+        for (let $gone of existing.values())
+            $gone.remove();
+    }
+
+    _createFilterBox(columnId: number): HTMLElement {
+        let $input = h('input', { class: 'jmv-filter-box jmv-search-field-input', 'data-id': String(columnId), spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
+        let $clear = h('button', { class: 'jmv-search-field-clear', title: _('Clear'), 'aria-label': _('Clear'), tabindex: '-1' }, '\u00D7');
+        let $field = h('div', { class: 'jmv-filter-field' }, h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }), $input, $clear);
+        let $cell = h('div', { class: 'jmv-filter-cell', 'data-id': String(columnId) }, $field);
+        $input.value = this._terms.get(columnId) ?? '';
+        let timer: ReturnType<typeof setTimeout>;
+        let update = () => $cell.classList.toggle('active', $input.value !== '');
+        let apply = () => {
+            clearTimeout(timer);
+            this._terms.set(columnId, $input.value);
+            update();
+            this._updateSearch();
+            this._applySearch();
+        };
+        update();
+        $field.addEventListener('click', () => $input.focus({ preventScroll: true }));
+        $clear.addEventListener('click', () => {
+            $input.value = '';
+            apply();
+            $input.focus({ preventScroll: true });
+        });
+        $input.addEventListener('input', () => {
+            update();
+            this.classList.add('search-pending');
+            clearTimeout(timer);
+            timer = setTimeout(apply, 250);
+        });
+        $input.addEventListener('keydown', (event) => {
+            event.stopPropagation();  // not typing into a cell
+            if (event.key === 'Enter')
+                apply();
+            else if (event.key === 'Escape') {
+                event.preventDefault();
+                $input.value = '';
+                apply();
+            }
+        });
+        for (let type of [ 'pointerdown', 'mousedown', 'click', 'dblclick', 'contextmenu' ])
+            $cell.addEventListener(type, event => event.stopPropagation());  // not selecting cells
+        return $cell;
     }
 
     _createHeader(colNo: number, left: number) {

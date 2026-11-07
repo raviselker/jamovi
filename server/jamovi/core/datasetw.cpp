@@ -482,7 +482,29 @@ vector<char> DataSetW::searchRows(const string &search, const vector<int> &colum
     return matches;
 }
 
-bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool> &descending, bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole)
+vector<char> DataSetW::matchRows(const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole)
+{
+    // the search, and each column's term: a row must match them all.
+    // empty when there's nothing to match
+
+    vector<char> matches = searchRows(search, searchColumnIds, searchWhole);
+
+    for (size_t i = 0; i < termIds.size(); i++)
+    {
+        vector<char> term = searchRows(termTexts[i], { termIds[i] }, termWhole[i]);
+        if (term.empty())
+            continue;
+        if (matches.empty())
+            matches = move(term);
+        else
+            for (size_t rowNo = 0; rowNo < matches.size(); rowNo++)
+                matches[rowNo] = matches[rowNo] && term[rowNo];
+    }
+
+    return matches;
+}
+
+bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool> &descending, bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole)
 {
     // the view order is the data set rows displayed, in the order they're
     // displayed; exFiltered omits filtered rows. ties retain the data set
@@ -490,7 +512,7 @@ bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool>
 
     int nRows = rowCount();
 
-    vector<char> matches = searchRows(search, searchColumnIds, searchWhole);
+    vector<char> matches = matchRows(search, searchColumnIds, searchWhole, termIds, termTexts, termWhole);
 
     vector<int> rows;
     rows.reserve(nRows);
@@ -511,7 +533,7 @@ bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool>
     return setViewOrder(rows);
 }
 
-bool DataSetW::updateViewOrder(bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole)
+bool DataSetW::updateViewOrder(bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole)
 {
     // rows remain where they're displayed; rows no longer displayed are
     // dropped, and newly displayed rows go last. rows edited so they no
@@ -537,7 +559,7 @@ bool DataSetW::updateViewOrder(bool exFiltered, const string &search, const vect
         }
     }
 
-    vector<char> matches = searchRows(search, searchColumnIds, searchWhole);
+    vector<char> matches = matchRows(search, searchColumnIds, searchWhole, termIds, termTexts, termWhole);
 
     for (int rowNo = 0; rowNo < nRows; rowNo++)
     {

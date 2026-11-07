@@ -173,3 +173,16 @@ def test_search_and_sort_combine(dataset: DataSet):
     THEN the matching rows are displayed in sorted order"""
     dataset.refresh_view_order([(dataset["A"].id, True)], False, ("a", [dataset["B"].id], False))
     assert dataset.get_data_indices(0, dataset.view_row_count) == [4, 2]
+
+
+def test_search_terms_must_all_match(dataset: DataSet):
+    """GIVEN a term for each of two columns
+    WHEN searching with both
+    THEN only rows matching both are displayed"""
+    b, c = dataset["B"].id, dataset["C"].id
+    dataset.refresh_view_order([], False, None, [(b, "b", False), (c, "bob", False)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == [3]
+    dataset.refresh_view_order([], False, None, [(b, "b", False), (c, "anne", False)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == []
+    dataset.refresh_view_order([], False, None, [(c, "anne", True)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == [2, 4]

@@ -620,6 +620,12 @@ message DataSetSchema {
         repeated int32 columnIds = 2;  // none searches every column
         bool whole = 3;  // the whole cell must match
         uint32 matches = 4;  // rows found (response only)
+        message Term {
+            int32 columnId = 1;
+            string text = 2;
+            bool whole = 3;
+        }
+        repeated Term terms = 5;  // per column; a row must match every one
     }
 
     // the rows displayed are those matching. in a request, present only

@@ -87,16 +87,19 @@ class DataSet(Protocol):
 
     @abstractmethod
     def refresh_view_order(self, sort_keys: list[tuple[int, bool]], ex_filtered: bool,
-            search: tuple[str, list[int], bool] | None = None) -> bool:
+            search: tuple[str, list[int], bool] | None = None,
+            terms: Iterable[tuple[int, str, bool]] = ()) -> bool:
         """rebuild the view order: the data set rows displayed, in the order
         they're displayed. sort_keys are (column id, descending) pairs,
         ex_filtered omits filtered rows, and search (text, column ids, whole
-        cell) omits rows not matching. returns whether it changed"""
+        cell) omits rows not matching, as do terms (column id, text, whole
+        cell), all of which must match. returns whether it changed"""
         raise NotImplementedError
 
     @abstractmethod
     def update_view_order(self, ex_filtered: bool,
-            search: tuple[str, list[int], bool] | None = None) -> bool:
+            search: tuple[str, list[int], bool] | None = None,
+            terms: Iterable[tuple[int, str, bool]] = ()) -> bool:
         """update the rows displayed, without moving those that remain
         (new rows go last). returns whether it changed"""
         raise NotImplementedError

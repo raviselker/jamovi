@@ -100,6 +100,7 @@ class DataSetModel:
         self._filters_visible = True
         self._sort_keys = [ ]
         self._search = None  # only for this session; not saved, nor undoable
+        self._search_terms: list[tuple[int, str, bool]] = [ ]  # likewise: (column id, text, whole cell), all must match
         self._view_order_valid = False
         self._view_order_rebuild = True
         self._view_order_stale = False
@@ -225,7 +226,16 @@ class DataSetModel:
 
     @property
     def is_searching(self):
-        return self._search is not None
+        return self._search is not None or len(self._search_terms) > 0
+
+    @property
+    def search_terms(self) -> list[tuple[int, str, bool]]:
+        return list(self._search_terms)
+
+    @search_terms.setter
+    def search_terms(self, terms: list[tuple[int, str, bool]]):
+        self._search_terms = [ (int(column_id), text, bool(whole)) for column_id, text, whole in terms if text != '' ]
+        self.invalidate_view_order()
 
     @property
     def is_view_remapped(self):
@@ -257,13 +267,16 @@ class DataSetModel:
         if self._search is not None and any(column_id not in ids for column_id in self._search[1]):
             self._search = None
             self._view_order_rebuild = True
+        if any(term[0] not in ids for term in self._search_terms):
+            self._search_terms = [ term for term in self._search_terms if term[0] in ids ]
+            self._view_order_rebuild = True
 
         ex_filtered = self.ex_filtered and self.has_filters
         if self._view_order_rebuild or not (self.is_sorted or self.is_searching):
-            changed = self._dataset.refresh_view_order(self._sort_keys, ex_filtered, self._search)
+            changed = self._dataset.refresh_view_order(self._sort_keys, ex_filtered, self._search, self._search_terms)
             self._view_order_stale = False
         else:
-            changed = self._dataset.update_view_order(ex_filtered, self._search)
+            changed = self._dataset.update_view_order(ex_filtered, self._search, self._search_terms)
             self._view_order_stale = self.is_sorted and not self._dataset.is_view_order_sorted(self._sort_keys)
 
         self._view_order_valid = True

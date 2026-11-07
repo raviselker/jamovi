@@ -296,6 +296,7 @@ class DataSetController:
         search_pb = request.schema.search
         column_ids = [ column_id for column_id in search_pb.columnIds if column_id in ids ]
         self._data.search = (search_pb.text, column_ids, search_pb.whole)
+        self._data.search_terms = [ (term.columnId, term.text, term.whole) for term in search_pb.terms if term.columnId in ids ]
         changes['resort'] = True
 
     def _on_dataset_get(self, request, response):
@@ -1638,6 +1639,12 @@ class DataSetController:
             schema.search.text = text
             schema.search.columnIds[:] = column_ids
             schema.search.whole = whole
+        for column_id, text, whole in self._data.search_terms:
+            term_pb = schema.search.terms.add()
+            term_pb.columnId = column_id
+            term_pb.text = text
+            term_pb.whole = whole
+        if self._data.is_searching:
             schema.search.matches = self._data.view_row_count
 
         if self._data.row_tracker.is_edited:
