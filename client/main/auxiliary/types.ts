@@ -30,7 +30,22 @@ export function findInitialFocus(element: HTMLElement): HTMLElement | null {
 
 export type AuxViewId =
     | 'modules'
-    | 'help';
+    | 'help'
+    // the placeholders' (see placeholders/index.ts)
+    | 'assistant'
+    | 'results-toc'
+    | 'dataset'
+    | 'analysis'
+    | 'variable-info'
+    | 'issues'
+    | 'history'
+    | 'search'
+    | 'notes'
+    | 'output-nav'
+    | 'data-quality'
+    | 'transforms'
+    | 'guidance'
+    | 'review';
 
 export type AuxViewSelection = AuxViewId | null;
 export type AuxPresentation = 'hidden' | 'overlay' | 'docked';

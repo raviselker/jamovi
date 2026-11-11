@@ -138,3 +138,7 @@ npm run build
 ```
 
 This catches broken imports, missing CSS declarations, and invalid asset paths in bundled entry CSS. It also copies the server's `jamovi.proto` to `assets/coms.proto` before building; running vite directly skips that step, leaving the client with a stale copy of the protocol when it has changed (such as new module commands).
+
+## Placeholder Entries
+
+`placeholders/` holds entries that are only for show, sketching the kinds of thing the panel could hold. They're registered together, with one line in `registry.ts`. To remove them, delete the folder, that line, and their ids from `AuxViewId` in `types.ts`.

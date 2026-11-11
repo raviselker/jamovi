@@ -134,6 +134,7 @@ class ResultsPanel extends EventDistributor {
         analyses.on('analysisHeadingChanged', this._analysisNameChanged, this);
 
         this.model.on('change:selectedAnalysis', this._selectedChanged, this);
+        this.model.on('scrollToAnalysis', this._scrollToAnalysis, this);
 
         window.addEventListener('message', event => this._messageEvent(event));
 
@@ -1426,6 +1427,14 @@ class ResultsPanel extends EventDistributor {
 
     setFocus() {
         this.loop.activate();
+    }
+
+    // scrolls an analysis into view, for navigation such as the aux panel's
+    // table of contents (selecting an analysis doesn't scroll on its own)
+    _scrollToAnalysis(analysis) {
+        let results = analysis ? this.resources[analysis.id] : undefined;
+        if (results)
+            this._scrollIntoView(results.$container, results.$container.offsetHeight);
     }
 
     _selectedChanged(event) {

@@ -441,8 +441,13 @@ class Selection extends EventEmitter implements ISelection {
         return changed;
     }
 
-    registerChangeEventHandler(handler: (oldSel: ISelection, silent: boolean, ignoreTabStart: boolean) => (Promise<void> | void)) {
+    registerChangeEventHandler(handler: (oldSel: ISelection, silent: boolean, ignoreTabStart: boolean) => (Promise<void> | void)): () => void {
         this._handlers.push(handler);
+        return () => {
+            const index = this._handlers.indexOf(handler);
+            if (index !== -1)
+                this._handlers.splice(index, 1);
+        };
     }
 
     _onSelectionTypeChanged(type) {
@@ -489,7 +494,7 @@ class Selection extends EventEmitter implements ISelection {
             delete this.columnFocus;
 
         let promises: Promise<any>[] = [];
-        for (let handle of this._handlers) {
+        for (let handle of this._handlers.slice()) {
             let promise = handle(oldSel, silent, ignoreTabStart);
             if (promise)
                 promises.push(promise);
