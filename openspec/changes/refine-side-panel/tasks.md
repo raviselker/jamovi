@@ -32,6 +32,8 @@ Done on `side-panel-refinements` unless unchecked.
 - [x] 4.2 Remove the analyses list and Hide/Show from installed cards; verify installed cards show neither and uninstalled cards still show Install
 - [x] 4.3 Restyle help documents (blue headings, results-style tables, code); verify with the ANOVA help
 - [ ] 4.4 Check a module's Remove button, and cards with updates available
+- [x] 4.6 Add the help home, the follow toggle (a target beside the pin, via `AuxView.getPanelActions`), the "Help" crumb and the Run button; verify the home lists jmv and scatr ("No help yet"), that opening ANOVA stops following, that Run keeps the page, and that following again shows the selected analysis
+- [ ] 4.7 List a module's topics in the help home (there's no listing of a module's docs; they're reached from its overview for now)
 - [ ] 4.5 Fix help documents opening scrolled part-way down (seen on `llm_split_panel`)
 
 ## 5. Settings

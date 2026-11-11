@@ -52,7 +52,15 @@ The focus manager pulls focus back into a loop for 200 ms after focus enters it.
 ### Matching ignores accents
 Text and search are compared after Unicode decomposition with combining marks removed, and lowercased, so "médiation" matches "mediation". Highlighting maps each normalised character back to the original text, so the marked text is the user's own.
 
+### Help follows until you navigate
+Help was always tied to the selected analysis, so a page couldn't be kept open while setting up an analysis, or opened before one existed. It now follows only until the user navigates (the home, a link, the breadcrumb), and a target button beside the pin, like the filled pin, shows and switches following. A status strip above the page was considered and dropped: clearer, but it takes a line from the document. The button is added through `AuxView.getPanelActions`, which the panel shows only while that view is.
+
+### The help home reuses the Analyses panel's rows
+Same expanding module rows and search, without the ribbon toggle, so both panels look and work alike. A module counts as having help when it has a `docs/index.md`; topics aren't listed, since the server can't list a module's docs, and are reached from the module's overview.
+
 ## Risks / Trade-offs
+
+- **Run closes an unpinned panel:** running an analysis moves focus to its options, which closes the overlay. The page is still there when Help is reopened, and a pinned panel stays open.
 
 - **Cloud auth contract:** the `IUser` fields (name, email, plan, picture, manageUrl) are a guess at what jamovi cloud's user carries. → Confirm with the cloud auth module's owner; the account view only reads those fields.
 - **Two user buttons in the cloud:** the ribbon's `#jmv-user-button`, which the cloud fills today, is still there. → The cloud should stop filling it, then it can be removed.

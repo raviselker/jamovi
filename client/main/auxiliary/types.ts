@@ -105,6 +105,11 @@ export class AuxView {
         return this.createBodyElement();
     }
 
+    // buttons for the panel's header, beside the pin, shown while the view is
+    getPanelActions(): HTMLElement[] {
+        return [];
+    }
+
     // the icon markup is fixed internal markup
     createIcon(className: string): HTMLElement {
         const icon = h('div', { class: className, 'aria-hidden': 'true' });

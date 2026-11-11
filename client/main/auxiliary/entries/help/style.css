@@ -194,3 +194,47 @@ button.aux-help-crumb:hover {
     margin: 6px 0;
     overflow-x: auto;
 }
+
+/* the header's empty on the help home */
+.aux-help-header:not(:has(> :not([hidden]))) {
+    display: none;
+}
+
+.aux-help-run {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 10px;
+    padding: 3px 10px;
+    border: 1px solid #ACACAC;
+    border-radius: 3px;
+    background: #F0F0F0;
+    color: #333333;
+    font: inherit;
+}
+
+.aux-help-run::before {
+    content: '';
+    border-block: 5px solid transparent;
+    border-inline-start: 8px solid #3E6DA9;
+}
+
+.aux-help-run:hover {
+    background: #E6ECF4;
+}
+
+.aux-help-nohelp {
+    flex: none;
+    color: #888888;
+    font-size: 85%;
+    font-style: italic;
+}
+
+.aux-help-nodocs .aux-analyses-module-name {
+    color: #888888;
+}
+
+/* no ribbon toggle here, so no room kept for it */
+.aux-panel-view[data-aux-view='help'] .aux-analyses-module-summary {
+    padding-inline-end: 10px;
+}

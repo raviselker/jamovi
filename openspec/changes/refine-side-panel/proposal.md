@@ -14,7 +14,7 @@ A working implementation exists on the `side-panel-refinements` branch of `ravis
 - **The rail's entries:** Analyses, Module Library and Help at the top; the signed-in user's Account and Settings at the bottom. The placeholder entries are hidden.
 - **An Analyses panel** lists every installed module as a row that expands to its analyses. Clicking an analysis runs it. An eye button on each row shows or hides the module in the ribbon. Searching lists the matching analyses from every module.
 - **The Module Library** is for getting modules only: installed module cards no longer list their analyses or have a Hide/Show button. Its cards are restyled with tinted monogram tiles in jamovi's colours.
-- **Help** documents use the results' look: blue headings and ruled tables.
+- **Help** documents use the results' look: blue headings and ruled tables. Help can be browsed, not just followed: a help home lists every module's help, a target button beside the pin says whether Help follows the selected analysis, and opening a page stops following, so it stays while the analysis is set up (with a Run button on an analysis' page).
 - **Settings** move from the ribbon's kebab menu into a Settings panel; the kebab is removed. Alt+M opens the panel.
 - **An Account panel**, for jamovi cloud's signed-in user, shows the user, their plan, Manage subscriptions and Sign out. Without a user its button is hidden.
 - **One search box** for the side panel's panels: the same look, Escape to clear, matching that ignores case and accents, and the matches highlighted.
@@ -28,7 +28,7 @@ A working implementation exists on the `side-panel-refinements` branch of `ravis
 - `side-panel-search`: the search box and matching shared by the side panel's panels.
 - `analyses-panel`: running any installed analysis, and showing or hiding modules in the ribbon.
 - `module-library-panel`: finding, installing, updating and removing modules.
-- `help-panel`: the look of analysis help documents.
+- `help-panel`: the help home, following or staying on a page, and the look of help documents.
 - `settings-panel`: the application's preferences.
 - `account-panel`: the signed-in user's account.
 
@@ -37,7 +37,7 @@ None. There are no existing specs in `openspec/specs/`.
 
 ## Impact
 
-- **Client, side panel** (`client/main/auxiliary/`): shell styles, toolbar, panel, registry, the new `search.ts`, and the `analyses`, `settings` and `account` entries; the `modules` and `help` entries are restyled.
+- **Client, side panel** (`client/main/auxiliary/`): shell styles, toolbar, panel, registry, the new `search.ts`, and the `analyses`, `settings` and `account` entries; the `modules` and `help` entries are restyled, and `help` gets its home and follow toggle. Views can add buttons to the panel's header (`AuxView.getPanelActions`).
 - **Client, ribbon:** the application menu (`ribbon/appmenu.ts`, `appmenu.css`) and its key tip are removed; `main.ts` points Alt+M at the Settings panel.
 - **Client, auth** (`auth/auth.ts`): `currentUser()` returns a typed `IUser`. jamovi cloud's auth module has to return that shape.
 - **Server, protocol, file format:** none.

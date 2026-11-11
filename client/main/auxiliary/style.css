@@ -331,6 +331,10 @@ body[dir='rtl'] #main-view {
     outline-offset: 2px;
 }
 
+.aux-panel-action[hidden] {
+    display: none;
+}
+
 .aux-panel-action.active {
     color: #3E6DA9;
 }

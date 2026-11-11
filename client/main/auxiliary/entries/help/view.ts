@@ -1,4 +1,6 @@
-import { h } from '../../../../common/htmlelementcreator';
+import { h, htmlTrusted } from '../../../../common/htmlelementcreator';
+import type { IModuleMeta } from '../../../modules';
+import { createSearchBox, highlightSearch, matchesSearch, type SearchBox } from '../../search';
 import host from '../../../host';
 import type Instance from '../../../instance';
 import { Analysis } from '../../../analyses';
@@ -25,13 +27,26 @@ type DocRef = {
 // back through the breadcrumb, the link that was followed from it
 type DocFocus = 'crumb' | 'link' | null;
 
+type Translator = (value: string) => string;
+
+// the help home's modules, with whether each has documents
+type HomeModule = { module: IModuleMeta; tone: number; translate: Translator; hasDocs: boolean };
+
 export default class HelpAuxView extends AuxView {
     model: Instance;
     titleElement: HTMLElement | null = null;
     crumbsElement: HTMLElement | null = null;
     contentElement: HTMLElement | null = null;
-    // the analysis the panel is following, as ns::name
+    // the analysis the panel is following, as ns::name ('' for none: the
+    // home); null when it's to be shown afresh
     followedKey: string | null = null;
+    // whether the panel follows the selected analysis; navigating in the
+    // panel stops it, so a page stays while an analysis is set up
+    following = true;
+    followButton: HTMLButtonElement | null = null;
+    searchBox: SearchBox | null = null;
+    homeModules: HomeModule[] = [];
+    homeExpanded = new Set<string>();
     // the document showing, and those its links were followed from, which
     // the breadcrumb leads back to
     current: DocRef | null = null;
@@ -72,6 +87,11 @@ export default class HelpAuxView extends AuxView {
         this.crumbsElement = h('nav', { class: 'aux-help-crumbs', 'aria-label': _('Breadcrumb'), hidden: '' });
 
         this.contentElement = h('div', { class: 'aux-help-content', 'aria-live': 'polite' });
+        this.searchBox = createSearchBox({
+            label: _('Search help'),
+            onSearch: () => this.renderHome(),
+        });
+        this.searchBox.element.classList.add('aux-analyses-search');
         this.contentElement.addEventListener('click', event => this.onContentClick(event));
 
         const view = h('div', { class: 'aux-help-view' },
@@ -101,6 +121,12 @@ export default class HelpAuxView extends AuxView {
 
     onMount(): void {
         this.listen(this.model, 'change:selectedAnalysis', this.requestUpdate);
+        const onModulesChange = () => {
+            if (this.current === null)
+                void this.refreshHome();
+        };
+        this.listen(this.model.modules(), 'change:modules', onModulesChange);
+        this.listen(this.model.modules(), 'modulesChanged', onModulesChange);
 
         // zooming changes the width of chromium's scrollbars (in css pixels),
         // and fires a resize
@@ -116,6 +142,44 @@ export default class HelpAuxView extends AuxView {
         this.update();
     }
 
+    getPanelActions(): HTMLElement[] {
+        this.followButton = h('button', { type: 'button', class: 'aux-panel-action', 'aria-label': _('Follow the selected analysis'), title: _('Follow the selected analysis') });
+        this.followButton.addEventListener('click', () => this.setFollowing( ! this.following));
+        this.updateFollowButton();
+        return [ this.followButton ];
+    }
+
+    updateFollowButton(): void {
+        if (this.followButton === null)
+            return;
+        this.followButton.setAttribute('aria-pressed', String(this.following));
+        this.followButton.classList.toggle('active', this.following);
+        // a target, its centre filled while following
+        this.followButton.replaceChildren(h('div', { class: 'aux-panel-action-icon', 'aria-hidden': 'true' }, htmlTrusted(`
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="12" cy="12" r="6" />
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                ${ this.following ? '<circle cx="12" cy="12" r="2.2" fill="currentColor" />' : '' }
+            </svg>
+        `)));
+    }
+
+    setFollowing(following: boolean): void {
+        if (following === this.following)
+            return;
+        this.following = following;
+        this.followedKey = null;
+        this.updateFollowButton();
+        if (following) {
+            this.update();
+        }
+        else if (this.current !== null) {
+            // shown again, for its breadcrumb and Run button
+            this.current.scrollTop = this.scroller?.scrollTop ?? 0;
+            void this.show(this.current);
+        }
+    }
+
     // the width the document's scrollbar takes up, for the css to make room
     // for (see --aux-help-edge)
     measureScrollbar(): void {
@@ -126,13 +190,15 @@ export default class HelpAuxView extends AuxView {
     }
 
     update(): void {
+        if ( ! this.following)
+            return;
+
         const analysis = this.model.get('selectedAnalysis');
         if ( ! (analysis instanceof Analysis)) {
-            this.followedKey = null;
-            this.trail = [];
-            this.current = null;
-            this.loadId++;
-            this.showMessage(_('Select an analysis to see its help.'));
+            if (this.followedKey !== '') {
+                this.followedKey = '';
+                void this.showHome();
+            }
             return;
         }
 
@@ -183,7 +249,10 @@ export default class HelpAuxView extends AuxView {
         // only the last crumb's title has changed; rebuilding the breadcrumb
         // would lose the focus from the crumb focused above
         this.setCurrentCrumbTitle(doc.title);
-        this.contentElement.replaceChildren(article);
+        const run = this.following ? null : await this.createRunButton(doc);
+        if (loadId !== this.loadId)
+            return;
+        this.contentElement.replaceChildren(...(run ? [ run ] : []), article);
         // a document newly opened starts at the top
         this.scroller?.scrollTo({ top: doc.scrollTop ?? 0 });
         if (focus === 'link') {
@@ -193,6 +262,127 @@ export default class HelpAuxView extends AuxView {
             else
                 this.focusPreviousCrumb();
         }
+    }
+
+    // on an analysis' document, a button that runs it; the page stays (the
+    // panel isn't following) while it's set up
+    async createRunButton(doc: DocRef): Promise<HTMLElement | null> {
+        const modules: IModuleMeta[] = this.model.modules().get('modules') || [];
+        const module = modules.find(module => module.name === doc.ns);
+        const analysis = module?.analyses.find(analysis => `${ analysis.name.toLowerCase() }.md` === doc.path);
+        if (module === undefined || analysis === undefined)
+            return null;
+        const title = (await module.getTranslator)(analysis.title);
+        const button = h('button', { type: 'button', class: 'aux-help-run' }, _('Run {title}', { title }));
+        button.addEventListener('click', () => this.model.createAnalysis({ name: analysis.name, ns: module.name, title }));
+        return button;
+    }
+
+    // the modules, each with its overview and its analyses' documents
+    async showHome(focus = false): Promise<void> {
+        const loadId = ++this.loadId;
+        this.current = null;
+        this.trail = [];
+        this.setTitle('');
+        this.updateCrumbs();
+        if (this.contentElement === null || this.searchBox === null)
+            return;
+        this.contentElement.removeAttribute('aria-busy');
+        this.contentElement.replaceChildren(this.searchBox.element, h('div', { class: 'aux-analyses-list' }));
+        this.scrollToTop();
+        if (focus)
+            this.searchBox.input.focus({ preventScroll: true });
+        await this.refreshHome(loadId);
+    }
+
+    // (re)lists the modules, as they're installed and removed
+    async refreshHome(loadId = this.loadId): Promise<void> {
+        const modules: IModuleMeta[] = this.model.modules().get('modules') || [];
+        // shortcut: a module's taken to have documents when it has an index.md
+        const [ translators, hasDocs ] = await Promise.all([
+            Promise.all(modules.map(module => module.getTranslator)),
+            Promise.all(modules.map(module => this.fetchDoc({ ns: module.name, path: 'index.md' }).then(text => text !== null))),
+        ]);
+        if (loadId !== this.loadId || this.current !== null)
+            return;
+
+        this.homeModules = modules.map((module, index) => ({ module, tone: index % 4, translate: translators[index], hasDocs: hasDocs[index] }));
+        this.renderHome();
+    }
+
+    renderHome(): void {
+        const list = this.contentElement?.querySelector('.aux-analyses-list');
+        if ( ! list)
+            return;
+        const query = (this.searchBox?.input.value ?? '').trim();
+        if (query === '') {
+            list.replaceChildren(...this.homeModules.map(item => this.createHomeModule(item)));
+            return;
+        }
+
+        const items = h('div', { class: 'aux-analyses-items aux-analyses-results' });
+        for (const { module, translate, hasDocs } of this.homeModules) {
+            if ( ! hasDocs)
+                continue;
+            const moduleMatches = matchesSearch(module.name, query);
+            for (const analysis of this.getAnalyses(module)) {
+                const title = translate(analysis.menuTitle || analysis.title);
+                if (moduleMatches || matchesSearch(title, query))
+                    items.append(this.createHomeItem(module, `${ analysis.name.toLowerCase() }.md`, highlightSearch(title, query), module.name));
+            }
+        }
+        list.replaceChildren(items.childElementCount === 0
+            ? h('div', { class: 'aux-panel-placeholder' }, _('No help found.'))
+            : items);
+    }
+
+    createHomeModule({ module, tone, translate, hasDocs }: HomeModule): HTMLElement {
+        const summary = h('summary', { class: 'aux-analyses-module-summary' },
+            h('span', { class: 'aux-analyses-icon', 'data-tone': String(tone), 'aria-hidden': 'true' }, module.name.slice(0, 2).toLocaleUpperCase()),
+            h('span', { class: 'aux-analyses-module-text' },
+                h('span', { class: 'aux-analyses-module-name' }, module.name),
+                h('span', { class: 'aux-analyses-module-title', dir: 'auto' }, translate(module.title))),
+            hasDocs ? '' : h('span', { class: 'aux-help-nohelp' }, _('No help yet')));
+
+        const body = h('div', { class: 'aux-analyses-module-body' });
+        if (hasDocs) {
+            body.append(this.createHomeItem(module, 'index.md', _('Overview')));
+            for (const analysis of this.getAnalyses(module)) {
+                const title = translate(analysis.menuTitle || analysis.title);
+                const subtitle = analysis.menuSubtitle ? ` ${ translate(analysis.menuSubtitle) }` : '';
+                body.append(this.createHomeItem(module, `${ analysis.name.toLowerCase() }.md`, title + subtitle));
+            }
+        }
+        else {
+            body.append(h('div', { class: 'aux-panel-placeholder' }, _('This module has no help yet.')));
+        }
+
+        const details = h('details', { class: 'aux-analyses-module-details' }, summary, body);
+        details.open = this.homeExpanded.has(module.name);
+        details.addEventListener('toggle', () => {
+            if (details.open)
+                this.homeExpanded.add(module.name);
+            else
+                this.homeExpanded.delete(module.name);
+        });
+        return h('div', { class: `aux-analyses-module${ hasDocs ? '' : ' aux-help-nodocs' }` }, details);
+    }
+
+    createHomeItem(module: IModuleMeta, path: string, label: string | Node, moduleName?: string): HTMLElement {
+        const button = h('button', { type: 'button', class: 'aux-analyses-item' }, h('span', { dir: 'auto' }, label));
+        if (moduleName !== undefined)
+            button.append(h('span', { class: 'aux-analyses-item-module' }, moduleName));
+        button.addEventListener('click', event => {
+            this.setFollowing(false);
+            void this.show({ ns: module.name, path }, this.isKeyboardClick(event, button) ? 'crumb' : null);
+        });
+        return button;
+    }
+
+    // an analysis in both the analyses and the plots menus is listed twice
+    getAnalyses(module: IModuleMeta): IModuleMeta['analyses'] {
+        const names = new Set<string>();
+        return module.analyses.filter(analysis => ! names.has(analysis.name) && names.add(analysis.name));
     }
 
     // focuses the crumb for the document the showing one was opened from, so
@@ -254,6 +444,7 @@ export default class HelpAuxView extends AuxView {
         if ( ! path.endsWith('.md'))
             return;
 
+        this.setFollowing(false);
         this.current.scrollTop = this.scroller?.scrollTop ?? 0;
         this.current.linkIndex = Array.from(this.contentElement?.querySelectorAll('a') ?? []).indexOf(link);
         this.trail.push(this.current);
@@ -279,19 +470,22 @@ export default class HelpAuxView extends AuxView {
         void this.show(doc, fromKeyboard ? 'link' : null);
     }
 
-    // the breadcrumb shows only once a link's been followed: the documents
-    // followed from, then the one showing
+    // the breadcrumb shows on a document while not following: the home, the
+    // documents followed from, then the one showing
     updateCrumbs(): void {
         if (this.crumbsElement === null)
             return;
 
-        this.crumbsElement.hidden = this.trail.length === 0;
-        if (this.trail.length === 0) {
+        const shown = ! this.following && this.current !== null;
+        this.crumbsElement.hidden = ! shown;
+        if ( ! shown) {
             this.crumbsElement.replaceChildren();
             return;
         }
 
-        const items: Node[] = [];
+        const home = h('button', { type: 'button', class: 'aux-help-crumb' }, _('Help'));
+        home.addEventListener('click', event => void this.showHome(this.isKeyboardClick(event, home)));
+        const items: Node[] = [ home, h('span', { class: 'aux-help-crumb-separator', 'aria-hidden': 'true' }, '›') ];
         this.trail.forEach((doc, index) => {
             const crumb = h('button', { type: 'button', class: 'aux-help-crumb', dir: 'auto' }, doc.title || doc.path);
             crumb.addEventListener('click', event => this.backTo(index, this.isKeyboardClick(event, crumb)));

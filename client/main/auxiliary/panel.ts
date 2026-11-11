@@ -73,9 +73,8 @@ export default class AuxPanel {
             </svg>
         `));
 
-        const header = h('div', { id: 'aux-panel-header' },
-            this.titleElement,
-            h('div', { id: 'aux-panel-actions' }, this.pinButton, this.closeButton));
+        const actions = h('div', { id: 'aux-panel-actions' }, this.pinButton, this.closeButton);
+        const header = h('div', { id: 'aux-panel-header' }, this.titleElement, actions);
 
         const body = h('div', { id: 'aux-panel-body' });
 
@@ -83,6 +82,11 @@ export default class AuxPanel {
             const element = view.createPanelElement();
             body.append(element);
             this.viewElements.set(view.id, element);
+            for (const action of view.getPanelActions()) {
+                action.dataset.auxView = view.id;
+                action.hidden = true;
+                this.pinButton.before(action);
+            }
         }
 
         // the resize handle is placed by the grid, it's last here so it
@@ -160,6 +164,8 @@ export default class AuxPanel {
             element.classList.toggle('active', active);
             element.setAttribute('aria-hidden', active ? 'false' : 'true');
         });
+        this.element.querySelectorAll<HTMLElement>('#aux-panel-actions [data-aux-view]')
+            .forEach(action => action.hidden = action.dataset.auxView !== view);
     }
 
     dispose() {
