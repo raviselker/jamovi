@@ -29,8 +29,11 @@ export function findInitialFocus(element: HTMLElement): HTMLElement | null {
 }
 
 export type AuxViewId =
+    | 'analyses'
     | 'modules'
     | 'help'
+    | 'account'
+    | 'settings'
     // the placeholders' (see placeholders/index.ts)
     | 'assistant'
     | 'results-toc'

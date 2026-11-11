@@ -1,0 +1,89 @@
+/* The settings view, and its button, which is kept at the toolbar's end.
+   shortcut: only its position's fixed, and the toolbar's not reorderable in
+   the app (see main.ts); enable reordering and it must be left out of it */
+.aux-toolbar-button[data-aux-view='account'],
+.aux-toolbar-button[data-aux-view='settings'] {
+    margin-top: auto;
+}
+
+/* the account's above it, and takes the space instead */
+.aux-toolbar-button[data-aux-view='account']:not([hidden]) + .aux-toolbar-button[data-aux-view='settings'] {
+    margin-top: 0;
+}
+
+.aux-settings-group {
+    margin: 0 0 16px;
+    padding: 0;
+    border: none;
+    min-width: 0;
+}
+
+.aux-settings-group legend {
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 0 0 4px;
+    border-bottom: 1px solid #CCCCCC;
+    color: #3E6DA9;
+    font-size: 110%;
+    font-weight: bold;
+}
+
+.aux-settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 24px;
+    padding: 5px 0;
+}
+
+.aux-settings-row select,
+.aux-settings-row input[type='text'] {
+    box-sizing: border-box;
+    width: 140px;
+    padding: 3px 6px;
+    border: 1px solid #ACACAC;
+    border-radius: 3px;
+    background: #FFFFFF;
+    color: #333333;
+    font: inherit;
+}
+
+.aux-settings-row select:focus,
+.aux-settings-row input[type='text']:focus {
+    outline: none;
+    border-color: #3E6DA9;
+}
+
+.aux-settings-zoom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.aux-settings-zoom button {
+    width: 26px;
+    height: 24px;
+    border: 1px solid #ACACAC;
+    border-radius: 3px;
+    background: #F0F0F0;
+    color: #333333;
+    font: inherit;
+}
+
+.aux-settings-zoom button:hover {
+    background: #E6E6E6;
+    border-color: #888888;
+}
+
+.aux-settings-version {
+    margin-top: 12px;
+    color: #888888;
+    font-size: 85%;
+}
+
+[keyboardfocus="true"] .aux-settings :is(select, input, button):focus {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+}

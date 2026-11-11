@@ -11,7 +11,17 @@ export function promptSignIn(opts) {
 
 }
 
-export function currentUser() {
+// the signed in user, where there's sign in (jamovi cloud)
+export interface IUser {
+    name: string;
+    email: string;
+    plan?: string;
+    picture?: string;
+    // where the user manages their subscriptions
+    manageUrl?: string;
+}
+
+export function currentUser(): IUser | null {
     return null;
 }
 

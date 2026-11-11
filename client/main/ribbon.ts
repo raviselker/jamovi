@@ -1,7 +1,6 @@
 
 'use strict';
 
-import AppMenu from './ribbon/appmenu';
 import DataTab from './ribbon/datatab';
 import VariablesTab from './ribbon/variablestab';
 import AnnotationTab from './ribbon/annotationtab';
@@ -40,7 +39,6 @@ export class RibbonModel extends EventMap<IRibbonModelData>{
     _analysesTab: AnalyseTab;
     _plotsTab: PlotsTab;
     _editTab: AnnotationTab;
-    appMenu: AppMenu;
     _modules: Modules;
     _settings: Settings;
 
@@ -124,7 +122,6 @@ export class RibbonView extends EventDistributor {
     $fullScreen: HTMLElement;
     tabSelection: SelectionLoop;
     $tabs: NodeListOf<HTMLElement>;
-    appMenu: AppMenu;
     notifs: Notifs;
 
     constructor(model: RibbonModel) {
@@ -165,7 +162,6 @@ export class RibbonView extends EventDistributor {
         }, this);
 
         this.classList.add('jmv-ribbon');
-        this.appMenu = new AppMenu(this.model);
 
         this.append(h('div', { class: 'jmv-ribbon-header app-dragable', role: 'group', 'aria-orientation': 'horizontal' },
             h('button', { class: 'jmv-ribbon-tab file-tab', 'data-tabname': 'file', role: 'toolbaritem', 'aria-label': _('File'), 'aria-haspopup': 'true', 'aria-expanded': 'false' },
@@ -181,7 +177,6 @@ export class RibbonView extends EventDistributor {
         interactionManager.registerLoop(this);
 
         this.$header = this.querySelector<HTMLElement>('.jmv-ribbon-header');
-        this.$header.append(this.appMenu);
         this.$ribbonTabs = this.querySelector<HTMLElement>('.ribbon-tabs');
         this.tabSelection = new SelectionLoop('ribbon-tabs', this.$ribbonTabs);
         this.$ribbonTabs.classList.add('block-focus-left', 'block-focus-right');
@@ -296,15 +291,6 @@ export class RibbonView extends EventDistributor {
 
         this.$tabs = this.$header.querySelectorAll<HTMLElement>('.jmv-ribbon-tab:not(.file-tab)');
 
-        keyTips.register(this.appMenu, {
-            key: 'M',
-            position: { x: '50%', y: '75%' },
-            action: (event) => {
-                    this.appMenu.toggleMenu(false);
-                }
-            }
-        );
-
         
 
         this._refresh();
@@ -335,8 +321,6 @@ export class RibbonView extends EventDistributor {
 
     _menuClosed() {
         this.style.zIndex = '';
-
-        this.appMenu.hide();
 
         this.focus();
     }

@@ -134,15 +134,15 @@ export default class AuxPanel {
     }
 
     setPinned(pinned: boolean) {
-        const label = pinned ? _('Use overlay panel') : _('Pin panel');
+        const label = pinned ? _('Unpin panel') : _('Pin panel');
         this.pinButton.setAttribute('aria-label', label);
         this.pinButton.title = label;
         this.pinButton.classList.toggle('active', pinned);
         this.pinButton.replaceChildren(this.createActionIcon(pinned ? `
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="5" y="6" width="14" height="12" rx="2" />
-                <path d="M9 10h6" />
-                <path d="M9 14h6" />
+                <path d="M8 4h8" />
+                <path d="M9 4v5l-3 4h12l-3-4V4" fill="currentColor" />
+                <path d="M12 13v7" />
             </svg>
         ` : `
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

@@ -58,40 +58,34 @@ body[dir='rtl'] #main-view {
     width: var(--aux-toolbar-width);
     display: flex;
     flex-direction: column;
-    gap: 6px;
     align-items: center;
-    padding: 10px 6px;
     box-sizing: border-box;
     overflow-y: auto;
-    /* overflow-y alone makes x scrollable too, and the active button's
-       indicator reaches just past the padding, which shows a scrollbar */
+    /* overflow-y alone makes x scrollable too */
     overflow-x: hidden;
-    background: #F0F0F0;
-    border-inline-start: 1px solid #d0d0d0;
+    /* the ribbon's tab bar, on its side */
+    background: #3E6DA9;
+    /* keeps the active button, which is the panel's colour, off the ribbon's edge */
+    padding-top: 8px;
     z-index: 55;
 }
 
 #main-view[data-aux-side='start'] #aux-toolbar {
     inset-inline-start: 0;
     inset-inline-end: auto;
-    border-inline-start: none;
-    border-inline-end: 1px solid #D0D0D0;
 }
 
 #main-view[data-aux-side='end'] #aux-toolbar {
     inset-inline-start: auto;
     inset-inline-end: 0;
-    border-inline-start: 1px solid #D0D0D0;
-    border-inline-end: none;
 }
 
 .aux-toolbar-button {
-    width: 36px;
-    height: 36px;
+    width: 100%;
+    height: 42px;
     border: none;
-    border-radius: 8px;
     background: transparent;
-    color: #4B5563;
+    color: #FFFFFF;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -99,6 +93,10 @@ body[dir='rtl'] #main-view {
     padding: 4px;
     flex-shrink: 0;
     position: relative;
+}
+
+.aux-toolbar-button[hidden] {
+    display: none;
 }
 
 .aux-toolbar-button.dragging,
@@ -110,7 +108,7 @@ body[dir='rtl'] #main-view {
     position: fixed;
     width: 42px;
     height: 42px;
-    border-radius: 8px;
+    border-radius: 3px;
     background: rgba(255, 255, 255, 0.72);
     color: #3E6DA9;
     display: flex;
@@ -135,7 +133,7 @@ body[dir='rtl'] #main-view {
     inset-inline-start: 6px;
     inset-inline-end: 6px;
     height: 3px;
-    background: #3E6DA9;
+    background: #FFFFFF;
     border-radius: 999px;
 }
 
@@ -169,39 +167,27 @@ body[dir='rtl'] #main-view {
 }
 
 .aux-toolbar-button:hover {
-    background: rgba(62, 109, 169, 0.12);
+    background: rgba(255, 255, 255, 0.18);
 }
 
 .aux-toolbar-button:focus-visible {
-    background: rgba(62, 109, 169, 0.18);
+    background: rgba(255, 255, 255, 0.28);
     outline: none;
 }
 
+/* inside the button: the toolbar clips what's beyond it */
 [keyboardfocus="true"] .aux-toolbar-button:focus {
-    background: rgba(62, 109, 169, 0.18);
-    outline: 2px solid Highlight;
-    outline-offset: 2px;
+    outline: 2px solid #FFFFFF;
+    outline-offset: -2px;
 }
 
-.aux-toolbar-button.active {
-    background: rgba(203, 213, 225, 0.72);
-    color: #355270;
-}
-
-.aux-toolbar-button.active::before {
-    content: "";
-    position: absolute;
-    top: 1px;
-    bottom: 1px;
-    width: 4px;
-    border-radius: 999px;
-    background: #3E6DA9;
-    inset-inline-end: -10px;
-}
-
-#main-view[data-aux-side='start'] .aux-toolbar-button.active::before {
-    inset-inline-start: -10px;
-    inset-inline-end: auto;
+/* as the ribbon's selected tab does, the active button takes the colour of
+   the panel it opens */
+.aux-toolbar-button.active,
+[keyboardfocus="true"] .aux-toolbar-button.active:focus {
+    background: #F8F8F8;
+    color: #3E6DA9;
+    outline-color: Highlight;
 }
 
 .aux-toolbar-button.active .aux-toolbar-icon {
@@ -217,9 +203,9 @@ body[dir='rtl'] #main-view {
     display: grid;
     grid-template-rows: auto 1fr;
     grid-template-columns: 10px minmax(0, 1fr);
-    background: linear-gradient(180deg, #F7F8FA, #FDFDFE);
-    border-inline-start: 1px solid #BCC3CC;
-    box-shadow: calc(-4px * var(--aux-inline-sign)) 0 10px rgba(38, 46, 56, 0.10);
+    background: #F8F8F8;
+    border-inline-start: 1px solid #ACACAC;
+    box-shadow: 0 0 5px #C1C1C1;
     z-index: 54;
     transform: translateX(calc((100% + 8px) * var(--aux-inline-sign)));
     opacity: 0;
@@ -233,17 +219,17 @@ body[dir='rtl'] #main-view {
     inset-inline-end: auto;
     grid-template-columns: minmax(0, 1fr) 10px;
     border-inline-start: none;
-    border-inline-end: 1px solid #BCC3CC;
-    box-shadow: calc(4px * var(--aux-inline-sign)) 0 10px rgba(38, 46, 56, 0.10);
+    border-inline-end: 1px solid #ACACAC;
+    box-shadow: 0 0 5px #C1C1C1;
     transform: translateX(calc((-100% - 8px) * var(--aux-inline-sign)));
 }
 
 #main-view[data-aux-side='end'] #aux-panel {
     inset-inline-start: auto;
     inset-inline-end: var(--aux-toolbar-width);
-    border-inline-start: 1px solid #BCC3CC;
+    border-inline-start: 1px solid #ACACAC;
     border-inline-end: none;
-    box-shadow: calc(-4px * var(--aux-inline-sign)) 0 10px rgba(38, 46, 56, 0.10);
+    box-shadow: 0 0 5px #C1C1C1;
     transform: translateX(calc((100% + 8px) * var(--aux-inline-sign)));
 }
 
@@ -296,15 +282,14 @@ body[dir='rtl'] #main-view {
     gap: 8px;
     padding-block: 12px;
     padding-inline: 14px 10px;
-    border-bottom: 1px solid #D1D6DD;
-    background: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid #CCCCCC;
+    background: #F8F8F8;
     position: relative;
 }
 
 #aux-panel-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #334155;
+    font-size: 150%;
+    color: #333333;
 }
 
 #aux-panel-actions {
@@ -315,7 +300,7 @@ body[dir='rtl'] #main-view {
 .aux-panel-action {
     border: none;
     background: transparent;
-    color: #475569;
+    color: #555555;
     min-width: 28px;
     height: 28px;
     cursor: default;
@@ -326,22 +311,22 @@ body[dir='rtl'] #main-view {
 }
 
 .aux-panel-action:hover {
-    color: #334155;
+    color: #333333;
     background: rgba(62, 109, 169, 0.08);
-    border-radius: 8px;
+    border-radius: 3px;
 }
 
 .aux-panel-action:focus-visible {
-    color: #334155;
+    color: #333333;
     background: rgba(62, 109, 169, 0.14);
-    border-radius: 8px;
+    border-radius: 3px;
     outline: none;
 }
 
 [keyboardfocus="true"] .aux-panel-action:focus {
-    color: #334155;
+    color: #333333;
     background: rgba(62, 109, 169, 0.14);
-    border-radius: 8px;
+    border-radius: 3px;
     outline: 2px solid Highlight;
     outline-offset: 2px;
 }
@@ -398,8 +383,8 @@ body[dir='rtl'] #main-view {
     bottom: -1px;
     inset-inline-start: -10px;
     width: 10px;
-    background: rgba(255, 255, 255, 0.7);
-    border-bottom: 1px solid #D1D6DD;
+    background: #F8F8F8;
+    border-bottom: 1px solid #CCCCCC;
     pointer-events: none;
 }
 
@@ -410,7 +395,7 @@ body[dir='rtl'] #main-view {
 
 .aux-panel-view {
     display: none;
-    color: #334155;
+    color: #333333;
 }
 
 .aux-panel-view.active {
@@ -423,10 +408,80 @@ body[dir='rtl'] #main-view {
 }
 
 .aux-panel-placeholder {
-    border: 1px dashed #C3CBD5;
-    border-radius: 12px;
+    border: 1px dashed #CCCCCC;
+    border-radius: 3px;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.72);
+    background: #FFFFFF;
+}
+
+/* the side panel's search box (see search.ts) */
+.aux-searchbox {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    border: 1px solid #ACACAC;
+    border-radius: 3px;
+    background: #FFFFFF;
+    overflow: hidden;
+}
+
+.aux-searchbox:focus-within {
+    border-color: #3E6DA9;
+}
+
+.aux-searchbox-icon {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    margin-inline: 10px 8px;
+    background: url('../../assets/variable-search.svg') no-repeat center / contain;
+    filter: opacity(0.45);
+}
+
+.aux-searchbox-input {
+    flex: 1 1 auto;
+    /* an input won't shrink below its default width otherwise */
+    min-width: 0;
+    padding-block: 5px;
+    padding-inline: 0 10px;
+    border: none;
+    background: transparent;
+    color: #333333;
+    font: inherit;
+}
+
+.aux-searchbox-input:focus {
+    outline: none;
+}
+
+.aux-searchbox-clear {
+    flex: 0 0 auto;
+    width: 26px;
+    align-self: stretch;
+    border: none;
+    background: transparent;
+    color: #888888;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.aux-searchbox-clear::before {
+    content: '×';
+}
+
+.aux-searchbox-clear:hover {
+    color: #333333;
+}
+
+[keyboardfocus="true"] .aux-searchbox:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: -1px;
+}
+
+.aux-search-highlight {
+    border-radius: 2px;
+    background: rgba(255, 218, 88, 0.38);
+    color: inherit;
 }
 
 .aux-panel-list {
@@ -447,13 +502,18 @@ body[dir='rtl'] #main-view {
    through those (the active marker, drop indicators, the resize grip) is
    given a system colour instead */
 @media (forced-colors: active) {
+    .aux-search-highlight {
+        forced-color-adjust: none;
+        background: Mark;
+        color: MarkText;
+    }
+
     .aux-toolbar-button.active,
     .aux-panel-action.active {
         outline: 2px solid Highlight;
         outline-offset: -2px;
     }
 
-    .aux-toolbar-button.active::before,
     .aux-toolbar-button.drop-before::before,
     .aux-toolbar-button.drop-after::after {
         forced-color-adjust: none;

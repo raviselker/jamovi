@@ -1,15 +1,18 @@
+import accountEntry from './entries/account';
+import analysesEntry from './entries/analyses';
 import helpEntry from './entries/help';
 import modulesEntry from './entries/modules';
-import placeholderEntries from './placeholders';
+import settingsEntry from './entries/settings';
 import type Instance from '../instance';
 import type Selection from '../selection';
 import type { AuxEntry, AuxView } from './types';
 
 export const auxEntries: AuxEntry[] = [
+    analysesEntry,
     modulesEntry,
     helpEntry,
-    // for show only: see placeholders/index.ts
-    ...placeholderEntries,
+    accountEntry,
+    settingsEntry,
 ];
 
 export function createAuxViews(instance: Instance, selection: Selection): AuxView[] {

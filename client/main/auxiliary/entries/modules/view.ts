@@ -7,6 +7,7 @@ import interactionManager from '../../../../common/interactionmanager';
 import Version from '../../../utils/version';
 import { AuxView, findInitialFocus } from '../../types';
 import { scrollbarGutterWidth } from '../../scrollbar';
+import { createSearchBox, highlightSearch, matchesSearch, type SearchBox } from '../../search';
 
 type ModuleOp = IModuleMeta['ops'][number];
 
@@ -28,7 +29,7 @@ type ModuleCardState = {
 
 type ModuleFilter = 'all' | 'installed' | 'not-installed' | 'updates' | 'plots';
 
-type ModuleActionIcon = 'install' | 'remove' | 'hide' | 'show';
+type ModuleActionIcon = 'install' | 'remove';
 type ModuleStatusTone = 'default' | 'info' | 'warning';
 
 const actionIcons: Record<ModuleActionIcon, string> = {
@@ -45,17 +46,6 @@ const actionIcons: Record<ModuleActionIcon, string> = {
             <path d="M5 4.5v8" />
             <path d="M11 4.5v8" />
             <path d="M4.5 4.5l.5 8h6l.5-8" />
-        </svg>`,
-    hide: `
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M2 8s2.2-3 6-3 6 3 6 3-2.2 3-6 3-6-3-6-3Z" />
-            <path d="M6.8 7.9a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 0 0-2.4 0Z" />
-            <path d="M3 13 13 3" />
-        </svg>`,
-    show: `
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M2 8s2.2-3 6-3 6 3 6 3-2.2 3-6 3-6-3-6-3Z" />
-            <path d="M6.8 7.9a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 0 0-2.4 0Z" />
         </svg>`,
 };
 
@@ -80,6 +70,7 @@ const statusIcons: Record<ModuleStatusTone, string> = {
 export default class ModulesAuxView extends AuxView {
     model: Instance;
     filtersElement: HTMLDivElement | null = null;
+    searchBox: SearchBox | null = null;
     searchElement: HTMLInputElement | null = null;
     viewElement: HTMLElement | null = null;
     sideloadButton: HTMLButtonElement | null = null;
@@ -102,12 +93,11 @@ export default class ModulesAuxView extends AuxView {
     getTitle() { return _('Module Library'); }
 
     getIconSvg() { return `
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="4" width="6" height="6" rx="1" />
-                <rect x="14" y="4" width="6" height="6" rx="1" />
-                <rect x="4" y="14" width="6" height="6" rx="1" />
-                <path d="M17 13v8" />
-                <path d="M13 17h8" />
+            <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="8" height="8" data-fill="currentColor" />
+                <rect x="13" y="3" width="8" height="8" data-fill="currentColor" />
+                <rect x="3" y="13" width="8" height="8" data-fill="currentColor" />
+                <path d="M16 13h2v3h3v2h-3v3h-2v-3h-3v-2h3z" data-fill="currentColor" />
             </svg>
         `; }
 
@@ -130,17 +120,14 @@ export default class ModulesAuxView extends AuxView {
         );
         sideloadButton.classList.add('aux-module-sideload-button');
 
-        const search = h('input', {
-            type: 'text',
-            class: 'aux-module-search-input',
-            spellcheck: 'true',
-            placeholder: _('Search'),
-            'aria-label': _('Search modules'),
+        const searchBox = createSearchBox({
+            label: _('Search modules'),
+            onSearch: value => {
+                this.searchTerm = value;
+                void this.update();
+            },
         });
-        search.addEventListener('input', () => {
-            this.searchTerm = search.value;
-            void this.update();
-        });
+        searchBox.element.classList.add('aux-module-searchbox');
 
         const summaryProgress = h('div', { class: 'aux-module-summary-progress', 'aria-hidden': 'true' });
         const message = h('div', { class: 'aux-module-message', role: 'status', hidden: '' });
@@ -150,10 +137,7 @@ export default class ModulesAuxView extends AuxView {
             // sideload sits beside the search, leaving the filters the
             // width of the panel
             h('div', { class: 'aux-module-search-row' },
-                h('div', { class: 'aux-module-searchbox' },
-                    h('div', { class: 'aux-module-search-icon' }),
-                    search,
-                ),
+                searchBox.element,
                 sideloadButton,
             ),
             h('div', { class: 'aux-module-filter-row' }, filters),
@@ -171,7 +155,8 @@ export default class ModulesAuxView extends AuxView {
         this.viewElement = body;
 
         this.filtersElement = filters;
-        this.searchElement = search;
+        this.searchBox = searchBox;
+        this.searchElement = searchBox.input;
         this.sideloadButton = sideloadButton;
         this.summaryProgressElement = summaryProgress;
         this.messageElement = message;
@@ -186,8 +171,7 @@ export default class ModulesAuxView extends AuxView {
     showFiltered(filter: ModuleFilter, searchTerm = ''): void {
         this.selectedFilter = filter;
         this.searchTerm = searchTerm;
-        if (this.searchElement !== null)
-            this.searchElement.value = searchTerm;
+        this.searchBox?.setValue(searchTerm);
         this.updateFilterState();
         this.requestUpdate();
     }
@@ -207,8 +191,7 @@ export default class ModulesAuxView extends AuxView {
             // a search left over from before would quietly narrow the new
             // filter's list, even to nothing
             this.searchTerm = '';
-            if (this.searchElement !== null)
-                this.searchElement.value = '';
+            this.searchBox?.setValue('');
             this.updateFilterState();
             void this.update();
         });
@@ -227,7 +210,6 @@ export default class ModulesAuxView extends AuxView {
 
         this.listen(modules, 'change:modules', this.requestUpdate);
         this.listen(modules, 'modulesChanged', this.requestUpdate);
-        this.listen(modules, 'moduleVisibilityChanged', this.requestUpdate);
         this.listen(available, 'change:modules', this.requestUpdate);
         this.listen(available, 'change:status', this.requestUpdate);
         this.listen(available, 'change:progress', this.requestUpdate);
@@ -236,7 +218,6 @@ export default class ModulesAuxView extends AuxView {
         const settings = this.model.settings();
         this.listen(settings, 'change:permissions_library_side_load', this.updateSideloadButton);
         this.listen(settings, 'change:permissions_library_add_remove', this.requestUpdate);
-        this.listen(settings, 'change:permissions_library_show_hide', this.requestUpdate);
         this.listen(settings, 'change:permissions_library_browseable', this.onBrowseableChanged);
 
         this.update();
@@ -285,33 +266,7 @@ export default class ModulesAuxView extends AuxView {
     }
 
     createHighlightedTextContent(text: string, highlightTerm = ''): DocumentFragment {
-        const fragment = document.createDocumentFragment();
-        const term = highlightTerm.trim();
-        if (term === '') {
-            fragment.append(text);
-            return fragment;
-        }
-
-        const lowerText = text.toLocaleLowerCase();
-        const lowerTerm = term.toLocaleLowerCase();
-        let index = 0;
-
-        while (index < text.length) {
-            const matchIndex = lowerText.indexOf(lowerTerm, index);
-            if (matchIndex === -1)
-                break;
-
-            if (matchIndex > index)
-                fragment.append(text.slice(index, matchIndex));
-
-            fragment.append(h('span', { class: 'aux-module-search-highlight' }, text.slice(matchIndex, matchIndex + term.length)));
-            index = matchIndex + term.length;
-        }
-
-        if (index < text.length)
-            fragment.append(text.slice(index));
-
-        return fragment;
+        return highlightSearch(text, highlightTerm);
     }
 
     getSearchHighlightTerm(): string {
@@ -357,7 +312,7 @@ export default class ModulesAuxView extends AuxView {
     }
 
     expandDescriptionForHiddenHighlight(meta: HTMLElement): void {
-        if (meta.querySelector('.aux-module-search-highlight') === null)
+        if (meta.querySelector('.aux-search-highlight') === null)
             return;
 
         requestAnimationFrame(() => {
@@ -368,7 +323,7 @@ export default class ModulesAuxView extends AuxView {
                 return;
 
             const metaRect = meta.getBoundingClientRect();
-            const highlights = Array.from(meta.querySelectorAll<HTMLElement>('.aux-module-search-highlight'));
+            const highlights = Array.from(meta.querySelectorAll<HTMLElement>('.aux-search-highlight'));
             const highlightIsHidden = highlights.some(highlight => {
                 const rect = highlight.getBoundingClientRect();
                 return rect.top < metaRect.top - 1 || rect.bottom > metaRect.bottom + 1;
@@ -631,10 +586,6 @@ export default class ModulesAuxView extends AuxView {
 
     canAddRemoveModules(): boolean {
         return this.model.settings().getSetting('permissions_library_add_remove', false);
-    }
-
-    canShowHideModules(): boolean {
-        return this.model.settings().getSetting('permissions_library_show_hide', false);
     }
 
     canBrowseLibrary(): boolean {
@@ -984,7 +935,7 @@ export default class ModulesAuxView extends AuxView {
             .join('\n')
             .toLocaleLowerCase();
 
-        return haystack.includes(rawSearch);
+        return matchesSearch(haystack, rawSearch);
     }
 
     async createModuleCard(module: IModuleMeta, installable: boolean, installedInLibrary = false): Promise<HTMLElement> {
@@ -1222,7 +1173,6 @@ export default class ModulesAuxView extends AuxView {
         const installState = this.installStates.get(module.name);
         const isInstalling = installState !== undefined;
         const addRemove = this.canAddRemoveModules();
-        const showHide = this.canShowHideModules();
         const canInstall = addRemove && installable && (module.ops.includes('install') || module.ops.includes('update'));
         if (canInstall)
             actions.dataset.role = 'module-actions';
@@ -1234,9 +1184,7 @@ export default class ModulesAuxView extends AuxView {
             installedInLibrary ? 'library-installed' : 'direct-list',
             isInstalling ? 'installing' : 'idle',
             module.ops.join(','),
-            module.visible ? 'visible' : 'hidden',
             addRemove ? 'add-remove' : 'no-add-remove',
-            showHide ? 'show-hide' : 'no-show-hide',
         ].join('|');
 
         if (actions.dataset.signature === signature) {
@@ -1272,16 +1220,6 @@ export default class ModulesAuxView extends AuxView {
             actions.append(button);
         }
 
-        if (showHide && (module.ops.includes('show') || module.ops.includes('hide'))) {
-            const label = module.visible ? _('Hide') : _('Show');
-            const button = this.createActionButton(label, () => this.toggleVisibility(module), false, 'subtle', '', module.visible ? 'hide' : 'show');
-            button.dataset.action = 'visibility';
-            button.setAttribute('aria-label', module.visible
-                ? _('Hide module {moduleName} from the Analyses ribbon', { moduleName: this.getModuleLabel(module) })
-                : _('Show module {moduleName} in the Analyses ribbon', { moduleName: this.getModuleLabel(module) }));
-            actions.append(button);
-        }
-
         if (! isInstalling) {
             if (module.ops.includes('installed') && ! installedInLibrary) {
                 const chip = this.createStatusChip(_('Installed'));
@@ -1300,10 +1238,9 @@ export default class ModulesAuxView extends AuxView {
     }
 
     // a card's actions are rebuilt as its state changes, so if one has focus
-    // it's restored to its replacement (i.e. Hide becomes Show, or Install
-    // Remove), or the next action available. only for the keyboard: a click
-    // leaves focus on the button too, but moving it to the replacement then
-    // isn't wanted
+    // it's restored to its replacement (i.e. Install becomes Remove), or the
+    // next action available. only for the keyboard: a click leaves focus on
+    // the button too, but moving it to the replacement then isn't wanted
     captureActionFocus(actions: HTMLElement): string | null {
         if ( ! interactionManager.inKeyboardMode())
             return null;
@@ -1330,9 +1267,10 @@ export default class ModulesAuxView extends AuxView {
 
         analysesHost.replaceChildren();
 
+        // an installed module's analyses are run from the analyses view
         const isInstalled = installedInLibrary || ! installable || module.ops.includes('installed') || module.ops.includes('remove');
         const analyses = isInstalled
-            ? this.createInstalledAnalyses(module, translator, highlightTerm)
+            ? null
             : installable
             ? this.createAvailableAnalyses(module, translator, highlightTerm)
             : null;
@@ -1362,23 +1300,6 @@ export default class ModulesAuxView extends AuxView {
             analyses.append(this.createActionButton(label, () => this.runAnalysis(module, analysis.name, analysis.title), true, 'default', highlightTerm));
         }
         return analyses;
-    }
-
-    createInstalledAnalyses(module: IModuleMeta, translator: (value: string) => string, highlightTerm = ''): HTMLElement {
-        const list = h('div', { class: 'aux-module-analyses-items' });
-
-        for (const analysis of module.analyses) {
-            const button = h('button', { type: 'button', class: 'aux-module-analysis-link', dir: 'auto' },
-                this.createHighlightedTextContent(translator(analysis.menuTitle || analysis.title), highlightTerm));
-            button.addEventListener('click', () => this.runAnalysis(module, analysis.name, analysis.title));
-            list.append(button);
-        }
-
-        return h('details', { class: 'aux-module-analyses-list' },
-            h('summary', { class: 'aux-module-analyses-summary' },
-                _('Analyses ({count})', { count: module.analyses.length.toLocaleString() })),
-            list,
-        );
     }
 
     createActionButton(label: string, action: () => void, secondary = false, emphasis: 'default' | 'primary' | 'subtle' | 'attention' = 'default', highlightTerm = '', iconType: ModuleActionIcon | null = null): HTMLButtonElement {
@@ -1704,14 +1625,6 @@ export default class ModulesAuxView extends AuxView {
                 type: 'error'
             }));
         });
-    }
-
-    toggleVisibility(module: IModuleMeta): void {
-        if (! this.canShowHideModules())
-            return;
-
-        this.model.modules().toggleModuleVisibility(module.name);
-        void this.update();
     }
 
     runAnalysis(module: IModuleMeta, analysisName: string, analysisTitle: string): void {

@@ -2,7 +2,7 @@
 
 .aux-module-section {
     display: grid;
-    gap: 14px;
+    gap: 8px;
 }
 
 /* the view fills the panel, so the card list (not the panel) scrolls */
@@ -37,7 +37,7 @@
     z-index: 1;
     padding-bottom: 6px;
     padding-inline-end: var(--aux-module-edge);
-    background: #F8FAFD;
+    background: #F8F8F8;
     transition: box-shadow 0.15s ease;
 }
 
@@ -91,46 +91,6 @@
 
 .aux-module-searchbox {
     flex: 1 1 auto;
-    min-width: 0;
-    border: 1px solid #D7DDE5;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.92);
-    overflow: hidden;
-}
-
-.aux-module-search-icon {
-    width: 14px;
-    height: 14px;
-    margin-inline-start: 10px;
-    margin-inline-end: 8px;
-    background-image: url('../../../../assets/variable-search.svg');
-    background-repeat: no-repeat;
-    background-size: contain;
-    filter: opacity(0.45);
-    flex: 0 0 auto;
-}
-
-.aux-module-search-input {
-    flex: 1 1 auto;
-    /* an input won't shrink below its default width otherwise */
-    min-width: 0;
-    border: none;
-    background: transparent;
-    color: #334155;
-    padding-block: 9px;
-    padding-inline: 0 10px;
-    font: inherit;
-}
-
-.aux-module-search-input:focus {
-    outline: none;
-}
-
-.aux-module-searchbox:focus-within {
-    border-color: #B8C6D8;
-    background: rgba(235, 242, 251, 0.95);
 }
 
 /* the install progress (or update all) slides open when there's something
@@ -178,7 +138,7 @@
 .aux-module-message {
     margin: 0 0 8px 0;
     padding: 6px 8px;
-    border-radius: 6px;
+    border-radius: 3px;
     background: #FFF7E6;
     color: #7A5B13;
     font-size: 12px;
@@ -202,7 +162,7 @@
     border: none;
     border-radius: 0;
     background: none;
-    color: #475569;
+    color: #555555;
     font: inherit;
     padding: 3px 7px;
 }
@@ -220,7 +180,7 @@
     top: 25%;
     bottom: 25%;
     width: 1px;
-    background: #CBD5E1;
+    background: #CCCCCC;
 }
 
 .aux-module-tab:hover,
@@ -238,27 +198,24 @@
 /* an underline rather than bold, which would change its width and shift
    the filters along */
 .aux-module-tab.active {
-    color: #1E3A5F;
+    color: #3E6DA9;
     box-shadow: inset 0 -2px 0 #3E6DA9;
 }
 
 .aux-module-card {
     position: relative;
     display: grid;
-    gap: 9px;
+    gap: 7px;
     min-width: 0;
     overflow: hidden;
-    border: 1px solid #DDE4EE;
-    border-radius: 14px;
-    padding: 14px 14px 12px 14px;
+    border: 1px solid #CCCCCC;
+    border-radius: 3px;
+    padding: 10px;
     background: #FFFFFF;
-    box-shadow: 0 1px 2px rgba(30, 41, 59, 0.04);
     transition: height 0.24s ease, opacity 0.24s ease, padding 0.24s ease, border-width 0.24s ease;
 }
 
 .aux-module-card.installed-in-library {
-    border-color: rgba(117, 200, 148, 0.52);
-    background: linear-gradient(180deg, rgba(223, 242, 230, 0.09), #FFFFFF 18%);
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
 }
@@ -271,12 +228,6 @@
 .aux-module-card.installed-in-library > :not(.aux-module-header):not(.aux-module-installed-badge),
 .aux-module-card.available-in-library > :not(.aux-module-header):not(.aux-module-installed-badge) {
     grid-column: 1 / -1;
-}
-
-.aux-module-search-highlight {
-    border-radius: 3px;
-    background: rgba(255, 218, 88, 0.38);
-    color: inherit;
 }
 
 .aux-module-card.removing {
@@ -304,47 +255,52 @@
 .aux-module-header {
     display: flex;
     align-items: flex-start;
-    gap: 11px;
+    gap: 9px;
     min-width: 0;
 }
 
 .aux-module-icon {
-    width: 48px;
-    height: 48px;
+    width: 32px;
+    height: 32px;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 15px;
-    background: #D7F0E0;
-    color: #1B7A4A;
-    font-size: 19px;
+    border-radius: 3px;
+    background: #D5DFEB;
+    color: #3E6DA9;
+    font-size: 13px;
     line-height: 1;
     font-weight: 700;
 }
 
-.aux-module-card:nth-child(3n) .aux-module-icon {
-    background: #DCE9F6;
-    color: #24527D;
+/* tints of the colours of jamovi's icons, to tell the modules apart */
+.aux-module-card:nth-child(4n + 2) .aux-module-icon {
+    background: #FAEBCB;
+    color: #9A6A12;
 }
 
-.aux-module-card:nth-child(3n + 2) .aux-module-icon {
-    background: #E6F0DD;
-    color: #426B23;
+.aux-module-card:nth-child(4n + 3) .aux-module-icon {
+    background: #F6DCDC;
+    color: #A84848;
+}
+
+.aux-module-card:nth-child(4n) .aux-module-icon {
+    background: #DCEEDD;
+    color: #2F7D34;
 }
 
 .aux-module-title-wrap {
     display: grid;
-    gap: 5px;
+    gap: 3px;
     min-width: 0;
-    padding-top: 2px;
 }
 
 .aux-module-title {
     font-weight: 700;
-    color: #08264B;
-    font-size: 17px;
-    line-height: 1.18;
+    color: #3E6DA9;
+    font-size: 120%;
+    line-height: 1.25;
     min-width: 0;
     overflow-wrap: anywhere;
 }
@@ -357,35 +313,24 @@
 }
 
 .aux-module-name {
-    color: #58677C;
-    font-size: 11px;
+    color: #888888;
     line-height: 1.2;
-    font-family: Consolas, 'Courier New', monospace;
     overflow-wrap: anywhere;
 }
 
 .aux-module-version {
-    display: inline-flex;
-    align-items: center;
-    min-height: 19px;
-    padding: 2px 9px;
-    border-radius: 999px;
-    background: #DFF2E6;
-    color: #18804B;
-    font-size: 11px;
-    line-height: 1;
-    font-weight: 700;
-    font-family: Consolas, 'Courier New', monospace;
+    color: #888888;
+    line-height: 1.2;
 }
 
 .aux-module-meta {
     border: none;
     padding: 0;
-    margin: 8px 0 0 0;
+    margin: 2px 0 0 0;
     background: transparent;
-    font-size: 14px;
+    font: inherit;
     line-height: 1.45;
-    color: #53657E;
+    color: #333333;
     text-align: start;
     /* clamped by height rather than -webkit-line-clamp, which can't lay
        out the block content (paragraphs, lists) descriptions contain */
@@ -425,7 +370,7 @@
 }
 
 .aux-module-meta a {
-    color: #4F86D9;
+    color: #3E6DA9;
     text-decoration: none;
 }
 
@@ -444,7 +389,7 @@
 
 .aux-module-meta:focus-visible {
     outline: none;
-    color: #475569;
+    color: #555555;
 }
 
 /* the fade would mask the outline, so a focused description is shown in full */
@@ -461,11 +406,10 @@
 }
 
 .aux-module-authors {
-    border-top: 1px solid #DDE4EE;
-    padding-top: 10px;
-    font-size: 12px;
+    border-top: 1px solid #DDDDDD;
+    padding-top: 7px;
     line-height: 1.35;
-    color: #64748B;
+    color: #555555;
     overflow-wrap: anywhere;
 }
 
@@ -476,84 +420,14 @@
     gap: 6px;
 }
 
-.aux-module-analyses-list {
-    padding-top: 0;
-}
-
-.aux-module-analyses-summary {
-    color: #64748B;
-    font-size: 11px;
-    line-height: 1.35;
-    cursor: default;
-    user-select: none;
-    list-style: none;
-}
-
-.aux-module-analyses-summary::-webkit-details-marker {
-    display: none;
-}
-
-.aux-module-analyses-summary::before {
-    content: ">";
-    display: inline-block;
-    margin-inline-end: 6px;
-    color: #94A3B8;
-    transform: rotate(0deg);
-    transition: transform 0.12s ease;
-}
-
-.aux-module-analyses-list[open] .aux-module-analyses-summary::before {
-    transform: rotate(90deg);
-}
-
-/* the marker points along the reading direction, and turns down to open */
-body[dir='rtl'] .aux-module-analyses-summary::before {
-    content: "<";
-}
-
-body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::before {
-    transform: rotate(-90deg);
-}
-
-.aux-module-analyses-items {
-    display: grid;
-    gap: 3px;
-    margin-top: 6px;
-    padding-inline-start: 14px;
-}
-
-.aux-module-analysis-link {
-    border: none;
-    background: transparent;
-    padding: 0;
-    color: #475569;
-    font-size: 11px;
-    line-height: 1.35;
-    text-align: start;
-}
-
-.aux-module-analysis-link:hover,
-.aux-module-analysis-link:focus-visible {
-    color: #2F4A66;
-    text-decoration: underline;
-    outline: none;
-}
-
-[keyboardfocus="true"] .aux-module-analysis-link:focus {
-    color: #2F4A66;
-    text-decoration: underline;
-    outline: 2px solid Highlight;
-    outline-offset: 2px;
-}
-
 .aux-module-action-button,
 .aux-module-analysis-button {
-    border: 1px solid #D7DDE5;
-    border-radius: 7px;
-    background: rgba(248, 250, 252, 0.98);
-    color: #334155;
-    padding: 4px 7px;
-    font-size: 11px;
+    border: 1px solid #ACACAC;
+    border-radius: 3px;
+    background: #F0F0F0;
+    color: #333333;
+    padding: 3px 8px;
+    font: inherit;
     line-height: 1.25;
     min-width: 0;
     max-width: 100%;
@@ -589,12 +463,6 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
     overflow-wrap: anywhere;
 }
 
-.aux-module-action-button[data-emphasis='primary'] {
-    border-color: #DCE3EC;
-    background: rgba(241, 245, 249, 0.92);
-    color: #475569;
-}
-
 .aux-module-action-button[data-emphasis='attention'] {
     border-color: #B45309;
     background: #B45309;
@@ -608,41 +476,21 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
     color: #FFFFFF;
 }
 
-.aux-module-action-button[data-emphasis='subtle'] {
-    border-color: #DCE3EC;
-    background: rgba(241, 245, 249, 0.92);
-    color: #475569;
-}
-
 .aux-module-action-button:hover,
 .aux-module-action-button:focus-visible,
 .aux-module-analysis-button:hover,
 .aux-module-analysis-button:focus-visible {
-    background: rgba(237, 243, 248, 0.98);
-    border-color: #B8C6D8;
+    background: #E6E6E6;
+    border-color: #888888;
     outline: none;
 }
 
 [keyboardfocus="true"] .aux-module-action-button:focus,
 [keyboardfocus="true"] .aux-module-analysis-button:focus {
-    background: rgba(237, 243, 248, 0.98);
-    border-color: #B8C6D8;
+    background: #E6E6E6;
+    border-color: #888888;
     outline: 2px solid Highlight;
     outline-offset: 2px;
-}
-
-.aux-module-action-button[data-emphasis='primary']:hover,
-.aux-module-action-button[data-emphasis='primary']:focus-visible {
-    background: rgba(238, 242, 246, 0.98);
-    border-color: #CCD6E2;
-    color: #334155;
-}
-
-.aux-module-action-button[data-emphasis='subtle']:hover,
-.aux-module-action-button[data-emphasis='subtle']:focus-visible {
-    background: rgba(238, 242, 246, 0.98);
-    border-color: #CCD6E2;
-    color: #334155;
 }
 
 .aux-module-action-button:disabled,
@@ -653,9 +501,6 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
 }
 
 .aux-module-analysis-button {
-    font-size: 11px;
-    border-radius: 8px;
-    padding: 4px 7px;
 }
 
 .aux-module-status-chip {
@@ -663,10 +508,10 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
     align-items: center;
     gap: 4px;
     padding: 4px 7px;
-    border: 1px solid #D7DDE5;
-    border-radius: 7px;
-    background: rgba(248, 250, 252, 0.98);
-    color: #64748B;
+    border: 1px solid #CCCCCC;
+    border-radius: 3px;
+    background: #F8F8F8;
+    color: #555555;
     font-size: 11px;
     line-height: 1.2;
     min-width: 0;
@@ -711,9 +556,8 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
     padding: 2px 0;
     border: none;
     background: none;
-    color: #15803D;
-    font-size: 12px;
-    font-weight: 600;
+    color: #555555;
+    font: inherit;
     opacity: 1;
     transition: opacity 0.2s ease-out;
 }
@@ -735,6 +579,10 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
     color: inherit;
 }
 
+.aux-module-installed-badge[data-tone='default'] .aux-module-status-icon {
+    color: #3E6DA9;
+}
+
 .aux-module-card.needs-update {
     border-color: #E0A84F;
 }
@@ -744,7 +592,7 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
     align-items: flex-start;
     gap: 6px;
     padding: 7px 9px;
-    border-radius: 8px;
+    border-radius: 3px;
     background: #FEF3E2;
     color: #8A4B08;
     font-size: 12px;
@@ -777,7 +625,7 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
 .aux-module-progress-text {
     font-size: 11px;
     line-height: 1.2;
-    color: #64748B;
+    color: #555555;
     min-width: 0;
     overflow-wrap: anywhere;
 }
@@ -785,7 +633,7 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
 .aux-module-progress {
     margin-top: 0;
     height: 6px;
-    border-radius: 999px;
+    border-radius: 2px;
     background: rgba(209, 214, 221, 0.8);
     overflow: hidden;
     align-self: center;
@@ -794,14 +642,14 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
 .aux-module-progress-bar {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #5E8FD3 0%, #4270B0 100%);
+    background: #3E6DA9;
 }
 
 .aux-module-progress-label {
     margin-top: 0;
     font-size: 11px;
     line-height: 1.2;
-    color: #64748B;
+    color: #555555;
     justify-self: end;
     align-self: center;
     white-space: nowrap;
@@ -816,12 +664,6 @@ body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::be
     .aux-module-tab.active {
         outline: 2px solid Highlight;
         outline-offset: -2px;
-    }
-
-    .aux-module-search-highlight {
-        forced-color-adjust: none;
-        background: Mark;
-        color: MarkText;
     }
 
     .aux-module-progress {

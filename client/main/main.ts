@@ -260,9 +260,7 @@ const highContrast = new HighContrast(document.body, document.body, () => {
         .jmv-column-header-icon,
         .measure-type-icon,
         .silky-bs-flist-item-folder-browse-icon,
-        .silky-bs-fslist-browser-check-button,
-        .jmv-ribbon-appmenu-icon,
-        .jmv-ribbon-appmenu-back-button > div
+        .silky-bs-fslist-browser-check-button
         `);
 }, () => {
     return document.body.querySelectorAll(`
@@ -321,8 +319,8 @@ ready(async() => {
     }, _('Focus on the variable setup'));
     shortcuts.register('Alt+KeyM', () => { // navigate to Application menu
         interactionManager.setMode('keyboard');
-        ribbon.appMenu.toggleMenu(false);
-    }, _('Open application menu'));
+        auxShell?.showView('settings');
+    }, _('Open the settings'));
     shortcuts.register('Alt+KeyL', () => { // navigate to Modules library
         interactionManager.setMode('keyboard');
         auxShell?.showView('modules');

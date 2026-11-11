@@ -1,0 +1,204 @@
+/* The analyses view: each installed module, expandable to its analyses (or,
+   searching, the analyses that match). */
+
+.aux-analyses-search {
+    margin-bottom: 12px;
+}
+
+.aux-analyses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.aux-analyses-module {
+    position: relative;
+    border: 1px solid #CCCCCC;
+    border-radius: 3px;
+    background: #FFFFFF;
+}
+
+.aux-analyses-module-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-block: 6px;
+    /* room for the ribbon toggle, over its end */
+    padding-inline: 10px 38px;
+    cursor: default;
+    list-style: none;
+}
+
+.aux-analyses-module-summary::-webkit-details-marker {
+    display: none;
+}
+
+/* the disclosure triangle, as the module library's analyses list has */
+.aux-analyses-module-summary::before {
+    content: '';
+    flex: 0 0 auto;
+    border-block: 4px solid transparent;
+    border-inline-start: 6px solid #888888;
+    transition: transform 0.15s ease;
+}
+
+.aux-analyses-module-details[open] > .aux-analyses-module-summary::before {
+    transform: rotate(90deg);
+}
+
+body[dir='rtl'] .aux-analyses-module-details[open] > .aux-analyses-module-summary::before {
+    transform: rotate(-90deg);
+}
+
+.aux-analyses-module-summary:hover {
+    background: #F0F0F0;
+}
+
+.aux-analyses-module-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.aux-analyses-module-name {
+    font-weight: bold;
+    color: #3E6DA9;
+}
+
+.aux-analyses-module-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aux-analyses-module-count {
+    flex: 0 0 auto;
+}
+
+.aux-analyses-module-body {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 0;
+    border-top: 1px solid #DDDDDD;
+}
+
+/* whether the module's in the ribbon: an eye, crossed out when it's not */
+.aux-analyses-ribbon {
+    --eye: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z'/%3E%3C/svg%3E");
+    --eye-off: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 7a5 5 0 015 5c0 .65-.13 1.26-.36 1.83l2.92 2.92A11.8 11.8 0 0023 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 001 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65a3 3 0 003 3c.22 0 .44-.03.65-.08l1.55 1.55A5 5 0 017.53 9.8z'/%3E%3C/svg%3E");
+    position: absolute;
+    top: 8px;
+    inset-inline-end: 6px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+}
+
+.aux-analyses-ribbon::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    background: #888888;
+    mask: var(--eye) center / contain no-repeat;
+}
+
+.aux-analyses-ribbon[data-state='hidden']::before {
+    mask-image: var(--eye-off);
+}
+
+/* in the ribbon is the usual case, so it's quieter */
+.aux-analyses-ribbon[data-state='visible']::before {
+    background: #BBBBBB;
+}
+
+button.aux-analyses-ribbon:hover {
+    background: #F0F0F0;
+}
+
+button.aux-analyses-ribbon:hover::before {
+    background: #3E6DA9;
+}
+
+.aux-analyses-icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    background: #D5DFEB;
+    color: #3E6DA9;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.aux-analyses-icon[data-tone='1'] {
+    background: #FAEBCB;
+    color: #9A6A12;
+}
+
+.aux-analyses-icon[data-tone='2'] {
+    background: #F6DCDC;
+    color: #A84848;
+}
+
+.aux-analyses-icon[data-tone='3'] {
+    background: #DCEEDD;
+    color: #2F7D34;
+}
+
+.aux-analyses-results {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 0;
+    border: 1px solid #CCCCCC;
+    border-radius: 3px;
+    background: #FFFFFF;
+}
+
+.aux-analyses-module-title,
+.aux-analyses-module-count,
+.aux-analyses-item-subtitle,
+.aux-analyses-item-module {
+    color: #888888;
+    font-size: 85%;
+}
+
+.aux-analyses-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 10px;
+    border: none;
+    background: transparent;
+    color: #333333;
+    font: inherit;
+    text-align: start;
+}
+
+.aux-analyses-item:hover,
+.aux-analyses-item:focus-visible {
+    background: #E6ECF4;
+    outline: none;
+}
+
+[keyboardfocus="true"] .aux-analyses-module-summary:focus,
+[keyboardfocus="true"] .aux-analyses-ribbon:focus,
+[keyboardfocus="true"] .aux-analyses-item:focus {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+    .aux-analyses-ribbon::before,
+    .aux-analyses-ribbon[data-state='visible']::before {
+        background: CanvasText;
+    }
+}

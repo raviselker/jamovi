@@ -1,0 +1,92 @@
+/* The account view, and the user's avatar on its toolbar button. */
+
+.aux-account-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+    border-radius: 50%;
+    background: #DDE6F1;
+    color: #3E6DA9;
+    font-weight: bold;
+}
+
+.aux-account-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* replaces the toolbar icon, which is 24px */
+.aux-account-avatar-small {
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+    margin: -2px;
+    border: 2px solid #FFFFFF;
+    font-size: 11px;
+}
+
+.aux-toolbar-button.active .aux-account-avatar-small {
+    border-color: #3E6DA9;
+}
+
+.aux-account-avatar-large {
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
+}
+
+.aux-account-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.aux-account-details {
+    min-width: 0;
+}
+
+.aux-account-name {
+    font-size: 130%;
+    color: #333333;
+    overflow-wrap: anywhere;
+}
+
+.aux-account-email {
+    margin-top: 2px;
+    color: #888888;
+    overflow-wrap: anywhere;
+}
+
+.aux-account-plan {
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.aux-account-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.aux-account-actions button {
+    padding: 4px 10px;
+    border: 1px solid #ACACAC;
+    border-radius: 3px;
+    background: #F0F0F0;
+    color: #333333;
+    font: inherit;
+}
+
+.aux-account-actions button:hover {
+    background: #E6E6E6;
+    border-color: #888888;
+}
+
+[keyboardfocus="true"] .aux-account-actions button:focus {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+}

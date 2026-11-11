@@ -45,6 +45,10 @@ export default class AuxToolbar {
             const button = view.createToolbarButton();
             button.dataset.auxView = view.id;
             button.addEventListener('click', event => this.handleClick(event, view.id));
+            // a click leaves focus where it is, for the view to take: focus
+            // landing in the toolbar first, the focus manager pulls it back
+            // there (for a moment after) when the view takes it
+            button.addEventListener('mousedown', event => event.preventDefault());
             button.addEventListener('pointerdown', event => this.handlePointerDown(event, view.id));
             button.addEventListener('pointermove', event => this.handlePointerMove(event));
             button.addEventListener('pointerup', event => this.handlePointerUp(event));
