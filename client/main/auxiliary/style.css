@@ -1,0 +1,472 @@
+/* Aux shell, toolbar, panel, and shared view styles. */
+
+body.aux-toolbar-reordering,
+body.aux-toolbar-reordering * {
+    cursor: move !important;
+}
+
+body.aux-toolbar-reordering.aux-toolbar-no-drop,
+body.aux-toolbar-reordering.aux-toolbar-no-drop * {
+    cursor: no-drop !important;
+}
+
+#main-view {
+    /* the panel's sides are logical (start and end), this flips the few
+       physical values (transforms and shadow offsets) for rtl layouts */
+    --aux-inline-sign: 1;
+    --aux-toolbar-width: 56px;
+    --aux-panel-width: 320px;
+    --aux-toolbar-gap: 8px;
+    --aux-space-width: calc(var(--aux-toolbar-width) + var(--aux-panel-width));
+    padding-inline-end: var(--aux-toolbar-width);
+    transition: padding-inline-start 0.2s ease, padding-inline-end 0.2s ease;
+}
+
+body[dir='rtl'] #main-view {
+    --aux-inline-sign: -1;
+}
+
+#main-view[data-aux-side='start'] {
+    padding-inline-start: var(--aux-toolbar-width);
+    padding-inline-end: 0;
+}
+
+#main-view[data-aux-side='end'] {
+    padding-inline-start: 0;
+    padding-inline-end: calc(var(--aux-toolbar-width) + var(--aux-toolbar-gap));
+}
+
+#main-view[data-aux-presentation='docked'] {
+    padding-inline-end: var(--aux-space-width);
+}
+
+#main-view[data-aux-side='start'][data-aux-presentation='docked'] {
+    padding-inline-start: var(--aux-space-width);
+    padding-inline-end: 0;
+}
+
+#main-view[data-aux-side='end'][data-aux-presentation='docked'] {
+    padding-inline-start: 0;
+    padding-inline-end: var(--aux-space-width);
+}
+
+#aux-toolbar {
+    position: absolute;
+    inset-inline-end: 0;
+    top: -1px;
+    bottom: 0;
+    width: var(--aux-toolbar-width);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    padding: 10px 6px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    /* overflow-y alone makes x scrollable too, and the active button's
+       indicator reaches just past the padding, which shows a scrollbar */
+    overflow-x: hidden;
+    background: #F0F0F0;
+    border-inline-start: 1px solid #d0d0d0;
+    z-index: 55;
+}
+
+#main-view[data-aux-side='start'] #aux-toolbar {
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    border-inline-start: none;
+    border-inline-end: 1px solid #D0D0D0;
+}
+
+#main-view[data-aux-side='end'] #aux-toolbar {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    border-inline-start: 1px solid #D0D0D0;
+    border-inline-end: none;
+}
+
+.aux-toolbar-button {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #4B5563;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    padding: 4px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.aux-toolbar-button.dragging,
+#aux-toolbar.reordering .aux-toolbar-button {
+    cursor: move;
+}
+
+.aux-toolbar-button-ghost {
+    position: fixed;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #3E6DA9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    box-sizing: border-box;
+    box-shadow: 0 8px 18px rgba(38, 46, 56, 0.18);
+    border: 1px solid rgba(62, 109, 169, 0.18);
+    pointer-events: none;
+    z-index: 500;
+}
+
+.aux-toolbar-button.dragging {
+    opacity: 0.45;
+}
+
+.aux-toolbar-button.drop-before::before,
+.aux-toolbar-button.drop-after::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 6px;
+    inset-inline-end: 6px;
+    height: 3px;
+    background: #3E6DA9;
+    border-radius: 999px;
+}
+
+.aux-toolbar-button.drop-before::before {
+    top: -6px;
+}
+
+.aux-toolbar-button.drop-after::after {
+    bottom: -6px;
+}
+
+.aux-toolbar-icon {
+    width: 24px;
+    height: 24px;
+    opacity: 0.9;
+}
+
+.aux-toolbar-icon svg {
+    width: 24px;
+    height: 24px;
+    display: block;
+}
+
+.aux-toolbar-icon svg * {
+    stroke: currentColor;
+}
+
+.aux-toolbar-icon svg [data-fill='currentColor'] {
+    fill: currentColor;
+    stroke: none;
+}
+
+.aux-toolbar-button:hover {
+    background: rgba(62, 109, 169, 0.12);
+}
+
+.aux-toolbar-button:focus-visible {
+    background: rgba(62, 109, 169, 0.18);
+    outline: none;
+}
+
+[keyboardfocus="true"] .aux-toolbar-button:focus {
+    background: rgba(62, 109, 169, 0.18);
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+}
+
+.aux-toolbar-button.active {
+    background: rgba(203, 213, 225, 0.72);
+    color: #355270;
+}
+
+.aux-toolbar-button.active::before {
+    content: "";
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    width: 4px;
+    border-radius: 999px;
+    background: #3E6DA9;
+    inset-inline-end: -10px;
+}
+
+#main-view[data-aux-side='start'] .aux-toolbar-button.active::before {
+    inset-inline-start: -10px;
+    inset-inline-end: auto;
+}
+
+.aux-toolbar-button.active .aux-toolbar-icon {
+    opacity: 1;
+}
+
+#aux-panel {
+    position: absolute;
+    inset-inline-end: var(--aux-toolbar-width);
+    top: 0;
+    bottom: 0;
+    width: var(--aux-panel-width);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 10px minmax(0, 1fr);
+    background: linear-gradient(180deg, #F7F8FA, #FDFDFE);
+    border-inline-start: 1px solid #BCC3CC;
+    box-shadow: calc(-4px * var(--aux-inline-sign)) 0 10px rgba(38, 46, 56, 0.10);
+    z-index: 54;
+    transform: translateX(calc((100% + 8px) * var(--aux-inline-sign)));
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
+}
+
+#main-view[data-aux-side='start'] #aux-panel {
+    inset-inline-start: var(--aux-toolbar-width);
+    inset-inline-end: auto;
+    grid-template-columns: minmax(0, 1fr) 10px;
+    border-inline-start: none;
+    border-inline-end: 1px solid #BCC3CC;
+    box-shadow: calc(4px * var(--aux-inline-sign)) 0 10px rgba(38, 46, 56, 0.10);
+    transform: translateX(calc((-100% - 8px) * var(--aux-inline-sign)));
+}
+
+#main-view[data-aux-side='end'] #aux-panel {
+    inset-inline-start: auto;
+    inset-inline-end: var(--aux-toolbar-width);
+    border-inline-start: 1px solid #BCC3CC;
+    border-inline-end: none;
+    box-shadow: calc(-4px * var(--aux-inline-sign)) 0 10px rgba(38, 46, 56, 0.10);
+    transform: translateX(calc((100% + 8px) * var(--aux-inline-sign)));
+}
+
+#aux-panel-resize {
+    grid-area: 1 / 1 / -1 / span 1;
+    cursor: ew-resize;
+    touch-action: none;
+    position: relative;
+}
+
+#aux-panel-resize::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 3px;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.68);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 -6px 0 rgba(184, 196, 211, 0.82), 0 6px 0 rgba(184, 196, 211, 0.82);
+}
+
+[keyboardfocus="true"] #aux-panel-resize:focus {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+}
+
+#main-view[data-aux-side='start'] #aux-panel-resize {
+    grid-area: 1 / 2 / -1 / span 1;
+}
+
+#main-view[data-aux-presentation='overlay'] #aux-panel,
+#main-view[data-aux-presentation='docked'] #aux-panel {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+#main-view[data-aux-presentation='docked'] #aux-panel {
+    box-shadow: none;
+}
+
+#aux-panel-header {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-block: 12px;
+    padding-inline: 14px 10px;
+    border-bottom: 1px solid #D1D6DD;
+    background: rgba(255, 255, 255, 0.7);
+    position: relative;
+}
+
+#aux-panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+#aux-panel-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.aux-panel-action {
+    border: none;
+    background: transparent;
+    color: #475569;
+    min-width: 28px;
+    height: 28px;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.aux-panel-action:hover {
+    color: #334155;
+    background: rgba(62, 109, 169, 0.08);
+    border-radius: 8px;
+}
+
+.aux-panel-action:focus-visible {
+    color: #334155;
+    background: rgba(62, 109, 169, 0.14);
+    border-radius: 8px;
+    outline: none;
+}
+
+[keyboardfocus="true"] .aux-panel-action:focus {
+    color: #334155;
+    background: rgba(62, 109, 169, 0.14);
+    border-radius: 8px;
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+}
+
+.aux-panel-action.active {
+    color: #3E6DA9;
+}
+
+.aux-panel-action-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.aux-panel-action-icon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+.aux-panel-action-icon svg * {
+    stroke: currentColor;
+}
+
+#aux-panel-body {
+    grid-column: 2;
+    overflow: auto;
+    padding: 14px;
+    padding-top: 0px;
+    margin-top: 14px;
+}
+
+#main-view[data-aux-side='start'] #aux-panel-header,
+#main-view[data-aux-side='start'] #aux-panel-body {
+    grid-column: 1;
+}
+
+#main-view[data-aux-side='start'] #aux-panel-header {
+    padding-block: 12px;
+    padding-inline: 24px 0px;
+}
+
+#main-view[data-aux-side='start'] #aux-panel-body {
+    padding-inline-start: 24px;
+}
+
+#main-view[data-aux-side='end'] #aux-panel-body {
+    padding-inline-end: 24px;
+}
+
+#aux-panel-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: -1px;
+    inset-inline-start: -10px;
+    width: 10px;
+    background: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid #D1D6DD;
+    pointer-events: none;
+}
+
+#main-view[data-aux-side='start'] #aux-panel-header::before {
+    inset-inline-start: auto;
+    inset-inline-end: -10px;
+}
+
+.aux-panel-view {
+    display: none;
+    color: #334155;
+}
+
+.aux-panel-view.active {
+    display: block;
+}
+
+.aux-panel-view p {
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+}
+
+.aux-panel-placeholder {
+    border: 1px dashed #C3CBD5;
+    border-radius: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.aux-panel-list {
+    display: grid;
+    gap: 8px;
+    /*margin: 12px 0;*/
+}
+
+.aux-panel-list-item {
+    padding: 10px 12px;
+    border: 1px solid #D7DDE5;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+/* forced colours replace backgrounds and drop shadows, so state shown only
+   through those (the active marker, drop indicators, the resize grip) is
+   given a system colour instead */
+@media (forced-colors: active) {
+    .aux-toolbar-button.active,
+    .aux-panel-action.active {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+
+    .aux-toolbar-button.active::before,
+    .aux-toolbar-button.drop-before::before,
+    .aux-toolbar-button.drop-after::after {
+        forced-color-adjust: none;
+        background: Highlight;
+    }
+
+    .aux-toolbar-button-ghost {
+        border: 1px solid CanvasText;
+    }
+
+    #aux-panel-resize::after {
+        forced-color-adjust: none;
+        background: CanvasText;
+        box-shadow: 0 -6px 0 CanvasText, 0 6px 0 CanvasText;
+    }
+}

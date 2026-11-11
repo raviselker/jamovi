@@ -10,7 +10,11 @@
     box-sizing: border-box;
     position: absolute ;
     top: 0 ;
-    overflow: scroll ;
+    /* scrollbars only when the results overflow (overflow: scroll draws them
+       regardless in chromium). the gutter's kept, so the results' width
+       doesn't change, and they don't reflow, as the scrollbar comes and goes */
+    overflow: auto ;
+    scrollbar-gutter: stable ;
     transition: all .2s ;
     background-color: white ;
     padding-top: 2px;

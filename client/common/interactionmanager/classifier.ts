@@ -43,6 +43,10 @@ export class FocusElementClassifier {
             value.requires = { ArrowLeft: true, ArrowRight: true, ArrowUp: true, ArrowDown: true, Escape: false, Tab: false };
             value.usesKeyboard = true;
         }
+        else if (element.getAttribute('role') === 'separator' && element.hasAttribute('tabindex')) {
+            value.requires = { ArrowLeft: true, ArrowRight: true, ArrowUp: false, ArrowDown: false, Home: true, End: true, Escape: false, Tab: false };
+            value.usesKeyboard = true;
+        }
         else if (element.getAttribute('aria-haspopup')) {
             value.isFocusController = true;
             value.requires = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false, Escape: false, Tab: false, Enter: true, Space: true };

@@ -154,7 +154,8 @@ export class KeyTipController {
         let actionableToken: KeyTipToken = null;
 
         const elements = [...baseElement.querySelectorAll<HTMLElement>(filter)].filter(el => {
-            if (el.offsetWidth <= 0 || el.offsetHeight <= 0 || el.getAttribute('aria-hidden') || window.getComputedStyle(el).visibility === 'hidden')
+            const ariaHidden = el.getAttribute('aria-hidden');
+            if (el.offsetWidth <= 0 || el.offsetHeight <= 0 || (ariaHidden !== null && ariaHidden !== 'false') || window.getComputedStyle(el).visibility === 'hidden')
                 return false;
 
             const path = el.getAttribute('keytip-path');

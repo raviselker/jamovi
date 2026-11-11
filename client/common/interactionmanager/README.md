@@ -622,7 +622,8 @@ loop:
 
 Some controls reserve specific keys for their own behavior. When the focused
 control reserves a key, FocusLoop does not use that key for loop navigation or
-shortcuts.
+shortcuts. A focusable [role="separator"] reserves ArrowLeft, ArrowRight, Home
+and End, so it can be resized from the keyboard.
 
 exitKeys lets keyboard navigation deactivate a loop with source
 "programmatic".

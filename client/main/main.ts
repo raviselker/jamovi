@@ -27,6 +27,7 @@ import Instance from './instance';
 import Notify from './notification';
 import { UserFacingError } from './errors';
 import interactionManager, { keyTips, shortcuts } from '../common/interactionmanager';
+import { AuxShell, createAuxViews } from './auxiliary';
 
 import './utils/headeralert';
 import type { HeaderAlert } from './utils/headeralert';
@@ -277,6 +278,8 @@ const highContrast = new HighContrast(document.body, document.body, () => {
 }, true);
 
 ready(async() => {
+    let auxShell: AuxShell | null = null;
+
     if (navigator.platform === 'Win32')
         document.body.classList.add('windows');
     else if (navigator.platform == 'MacIntel')
@@ -555,10 +558,10 @@ ready(async() => {
             splitPanel.setMode('mixed');
     });
 
-    splitPanel.addPanel('main-table', { adjustable: true, fixed: false, anchor: 'left' });
-    splitPanel.addPanel('main-options', { adjustable: false, fixed: true, anchor: 'right', visible: false });
+    splitPanel.addPanel('main-table', { adjustable: true, fixed: false, anchor: 'left', role: 'data', placement: 'left' });
+    splitPanel.addPanel('main-options', { adjustable: false, fixed: true, anchor: 'right', visible: false, role: 'options', placement: 'center' });
     
-    let resultsPanel = splitPanel.addPanel('results', { adjustable: true, fixed: true, anchor: 'right' });
+    let resultsPanel = splitPanel.addPanel('results', { adjustable: true, fixed: true, anchor: 'right', role: 'results', placement: 'right' });
     let resultsView = new ResultsView();
     resultsView.setAttribute('role', 'region');
     resultsView.setAttribute('aria-label', 'Analyses Results');
@@ -728,6 +731,10 @@ ready(async() => {
 
     let selection = new Selection(dataSetModel);
     let viewController = new ViewController(dataSetModel, selection, instance.settings());
+
+    auxShell = new AuxShell(splitPanel, createAuxViews(instance, selection), { reorderable: false });
+    auxShell.mount();
+    auxShell.initialise();
 
     let mainTable = new TableView(dataSetModel, viewController, instance.settings());
     mainTable.id = 'spreadsheet';

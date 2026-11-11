@@ -17,6 +17,9 @@ export class FocusNavigator {
         if (element instanceof Element && element.shadowRoot)
             element = element.shadowRoot;
 
+        // a details element isn't focusable itself (its summary is), so it's
+        // matched by its summary; matching the details would leave focus()
+        // with nothing to do, and navigation stuck before it
         const tabbable = onlyTabbable ? ':not([tabindex="-1"])' : '';
         const nextLevel = parseInt(level) + 1;
         const list = [...element.querySelectorAll<HTMLElement>(`
@@ -25,16 +28,20 @@ export class FocusNavigator {
         input${tabbable}:not(.menu-level[fl-level="${nextLevel}"] *):not(.not-focusable *),
         textarea${tabbable}:not(.menu-level[fl-level="${nextLevel}"] *):not(.not-focusable *),
         select${tabbable}:not(.menu-level[fl-level="${nextLevel}"] *):not(.not-focusable *),
-        details${tabbable}:not(.menu-level[fl-level="${nextLevel}"] *):not(.not-focusable *),
+        details > summary:first-of-type${tabbable}:not(.menu-level[fl-level="${nextLevel}"] *):not(.not-focusable *),
         [tabindex]${tabbable}:not(.menu-level[fl-level="${nextLevel}"] *):not(.not-focusable *)`)]
             .filter(el => {
                 // SVG has no offsetWidth/offsetHeight, even when rendered.
                 const size = el.namespaceURI === 'http://www.w3.org/2000/svg'
                     ? el.getBoundingClientRect()
                     : { width: el.offsetWidth, height: el.offsetHeight };
+                const ariaHidden = el.getAttribute('aria-hidden');
                 return (el.hasAttribute('ignore-focus-size') || (size.width > 0 && size.height > 0))
-                    && !el.hasAttribute('disabled') && !el.getAttribute('aria-hidden')
-                    && !el.closest('[inert]') && window.getComputedStyle(el).visibility !== 'hidden';
+                    && !el.hasAttribute('disabled')
+                    && (ariaHidden === null || ariaHidden === 'false')
+                    && !el.closest('[inert]')
+                    && !this.inClosedDetails(el)
+                    && window.getComputedStyle(el).visibility !== 'hidden';
             });
 
         if (onlyTabbable) {
@@ -55,6 +62,22 @@ export class FocusNavigator {
         }
 
         return list;
+    }
+
+    // the content of a closed details element can't take focus, but can
+    // still report a size (it's hidden with content-visibility), so it's
+    // excluded explicitly. only the details' own summary remains reachable
+    inClosedDetails(element: HTMLElement): boolean {
+        let details = element.parentElement?.closest('details');
+        while (details) {
+            if ( ! details.open) {
+                const summary = details.querySelector(':scope > summary');
+                if (summary !== element)
+                    return true;
+            }
+            details = details.parentElement?.closest('details');
+        }
+        return false;
     }
 
     findBoundingRectangle(element: HTMLElement): DOMRect {

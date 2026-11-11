@@ -22,6 +22,7 @@ export type {
     FocusLoop,
     FocusLoopDeactivateCause,
     IFocusLoopDeactivateOptions,
+    IFocusLoopDeactivateEvent,
 } from './interactionmanager/focustype';
 export type {
     IKeyTipActionEvent,

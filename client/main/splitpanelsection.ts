@@ -4,6 +4,20 @@
 import type { SplitPanel } from "./splitpanel";
 import { h }  from '../common/htmlelementcreator';
 
+export type SplitPanelRole = 'data' | 'options' | 'results' | 'auxiliary' | 'custom';
+export type SplitPanelPlacement = 'left' | 'center' | 'right';
+export type SplitPanelPresentation = 'docked' | 'overlay';
+
+export type SplitPanelSectionInit = {
+    adjustable?: boolean;
+    anchor?: ('left' | 'right' | 'none');
+    fixed?: boolean;
+    placement?: SplitPanelPlacement;
+    presentation?: SplitPanelPresentation;
+    role?: SplitPanelRole;
+    visible?: boolean;
+};
+
 class SplitPanelSection extends HTMLElement {
     listIndex: number;
     name: string;
@@ -13,11 +27,14 @@ class SplitPanelSection extends HTMLElement {
     fixed: boolean = false;
     width: number = 0;
     anchor: ('left' | 'right' | 'none') = 'right';
+    role: SplitPanelRole = 'custom';
+    placement: SplitPanelPlacement = 'center';
+    presentation: SplitPanelPresentation = 'docked';
     _nextSection: { left: SplitPanelSection | null, right: SplitPanelSection | null} = { left: null, right: null };
     _splitter: HTMLElement;
     lastWidth: number | null = null;
 
-    constructor(index: number, name: string, initData, parent: SplitPanel) {
+    constructor(index: number, name: string, initData: SplitPanelSectionInit, parent: SplitPanel) {
         super();
 
         this.setAttribute('id', name);
@@ -34,13 +51,19 @@ class SplitPanelSection extends HTMLElement {
             this.initalise(initData);
     }
 
-    initalise (initData) {
+    initalise (initData: SplitPanelSectionInit) {
         if (initData.anchor !== undefined)
             this.anchor = initData.anchor;
         if (initData.adjustable !== undefined)
             this.adjustable = initData.adjustable;
         if (initData.fixed !== undefined)
             this.fixed = initData.fixed;
+        if (initData.role !== undefined)
+            this.role = initData.role;
+        if (initData.placement !== undefined)
+            this.placement = initData.placement;
+        if (initData.presentation !== undefined)
+            this.presentation = initData.presentation;
         if (initData.visible !== undefined)
             this.setVisibility(initData.visible);
     }
