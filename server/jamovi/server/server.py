@@ -485,16 +485,19 @@ class _Handlers:
             return web.Response(status=403, content_type='text/html',
                 text='<h1>403</h1>verboten')
 
-        content_type, enc = mimetypes.guess_type(doc_path)
-        if content_type is None:
-            content_type = 'text/plain'
-        if content_type.startswith('text/'):
-            content_type += '; charset=utf-8'
+        # this is the app's origin, so only markdown is served: anything a
+        # module ships that a browser would render as a page (.html, .svg,
+        # ...) would otherwise run as the app
+        if not doc_path.endswith('.md'):
+            return web.Response(status=404, content_type='text/html',
+                text='<h1>404</h1>')
 
-        headers = {'Content-Type': content_type,
-                   'Cache-Control': 'private, no-cache, must-revalidate, max-age=0'}
-        if enc:
-            headers['Content-Encoding'] = enc
+        headers = {'Content-Type': 'text/markdown; charset=utf-8',
+                   'Cache-Control': 'private, no-cache, must-revalidate, max-age=0',
+                   # and should the browser render it regardless, it can't
+                   # run script, nor load anything
+                   'X-Content-Type-Options': 'nosniff',
+                   'Content-Security-Policy': "sandbox; default-src 'none'"}
 
         # FileResponse performs the stat() and the reads in a thread, and
         # 404s for us if the doc isn't there

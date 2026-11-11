@@ -1,0 +1,190 @@
+/* Aux help styles. */
+
+/* the view fills the panel, the title and breadcrumb staying put while the
+   document (not the panel) scrolls beneath them */
+.aux-panel-view[data-aux-view='help'],
+.aux-panel-view[data-aux-view='help'] > div {
+    height: 100%;
+}
+
+/* the panel's outer padding is sized for its own scrollbar, which sat
+   beyond it; the document's is inside the view, so the view takes back
+   part of that padding */
+#main-view[data-aux-side='end'] .aux-panel-view[data-aux-view='help'] {
+    margin-inline-end: -12px;
+}
+
+/* the document's scrollbar gutter (--aux-help-scrollbar, measured:
+   chromium's takes up space, firefox's overlay bar doesn't) comes out of
+   the space beside it, so its edge stays in line with the header's: 10px,
+   or the gutter if that's wider */
+.aux-help-view {
+    --aux-help-edge: max(10px, var(--aux-help-scrollbar, 0px));
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+    height: 100%;
+}
+
+.aux-help-header {
+    display: grid;
+    gap: 4px;
+    padding: 0 0 8px 0;
+    padding-inline-end: var(--aux-help-edge);
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.aux-help-content {
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    padding-inline-end: calc(var(--aux-help-edge) - var(--aux-help-scrollbar, 0px));
+}
+
+.aux-help-title[hidden],
+.aux-help-crumbs[hidden] {
+    display: none;
+}
+
+.aux-help-title {
+    font-size: 1.25em;
+    font-weight: 600;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+.aux-help-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 4px;
+    color: #64748B;
+    font-size: 0.88em;
+    line-height: 1.4;
+}
+
+.aux-help-crumb {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+}
+
+button.aux-help-crumb {
+    color: #2E6FD8;
+    cursor: pointer;
+}
+
+button.aux-help-crumb:hover {
+    text-decoration: underline;
+}
+
+.aux-help-crumb-current {
+    color: #334155;
+}
+
+/* where the focus can land after opening a document from the keyboard */
+.aux-help-crumb:focus,
+.aux-help-title:focus {
+    outline: none;
+}
+
+[keyboardfocus="true"] button.aux-help-crumb:focus,
+[keyboardfocus="true"] .aux-help-title:focus {
+    border-radius: 2px;
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+}
+
+.aux-help-doc {
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.aux-help-doc h2 {
+    margin: 20px 0 8px 0;
+    font-size: 1.15em;
+}
+
+.aux-help-doc > h2:first-child {
+    margin-top: 8px;
+}
+
+.aux-help-doc h3 {
+    margin: 14px 0 6px 0;
+    font-size: 1em;
+}
+
+.aux-panel-view .aux-help-doc p,
+.aux-help-doc ul,
+.aux-help-doc ol {
+    margin: 0 0 8px 0;
+    line-height: inherit;
+}
+
+.aux-help-doc ul,
+.aux-help-doc ol {
+    padding-inline-start: 20px;
+}
+
+.aux-help-doc li {
+    margin-bottom: 4px;
+}
+
+/* code reads left to right, even in a right-to-left document; isolated, so
+   it doesn't reorder the text around it */
+.aux-help-doc code,
+.aux-help-doc pre {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.aux-help-doc pre {
+    text-align: left;
+    overflow-x: auto;
+}
+
+.aux-help-doc code {
+    padding: 0 3px;
+    border-radius: 3px;
+    background: #EEF2F7;
+    font-size: 0.92em;
+}
+
+.aux-help-doc table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 0 0 10px 0;
+    border-collapse: collapse;
+    font-size: 0.92em;
+}
+
+.aux-help-doc th,
+.aux-help-doc td {
+    padding: 3px 6px;
+    border: 1px solid #D7DEE8;
+    text-align: start;
+    vertical-align: top;
+}
+
+.aux-help-doc th {
+    background: #EEF2F7;
+}
+
+.aux-help-doc a {
+    color: #2E6FD8;
+}
+
+.aux-help-math {
+    unicode-bidi: isolate;
+}
+
+.aux-help-math-display {
+    display: block;
+    max-width: 100%;
+    margin: 6px 0;
+    overflow-x: auto;
+}
