@@ -15,7 +15,6 @@ import interactionManager, { keyTips } from '../common/interactionmanager';
 import { h }  from '../common/htmlelementcreator';
 import { Modules } from './modules';
 import Settings from './settings';
-import Store from './store';
  
 
 type AnyTab = DataTab | VariablesTab | AnnotationTab | AnalyseTab | PlotsTab;
@@ -45,7 +44,7 @@ export class RibbonModel extends EventMap<IRibbonModelData>{
     _modules: Modules;
     _settings: Settings;
 
-    constructor(modules: Modules, settings: Settings, store: Store) {
+    constructor(modules: Modules, settings: Settings) {
         super({
             tabs: [],
             selectedTab: 'analyses'
@@ -55,8 +54,8 @@ export class RibbonModel extends EventMap<IRibbonModelData>{
 
         this._variablesTab = new VariablesTab();
         this._dataTab = new DataTab();
-        this._analysesTab = new AnalyseTab(this._modules, settings, store);
-        this._plotsTab = new PlotsTab(this._modules, this, store);
+        this._analysesTab = new AnalyseTab(this._modules, settings);
+        this._plotsTab = new PlotsTab(this._modules, this);
         this._editTab = new AnnotationTab();
         
 
@@ -136,14 +135,6 @@ export class RibbonView extends EventDistributor {
         this.model.settings().on('change:mode', (events) => {
             let mode = this.model.settings().getSetting('mode', 'normal');
             this.setAttribute('mode', mode);
-            let $checkboxes = this.querySelectorAll<HTMLElement>('.display-in-menu > input');
-            $checkboxes.forEach(el => {
-                if (mode === 'cloud')
-                    el.setAttribute("disabled", 'true');
-                else
-                    el.removeAttribute("disabled");
-            });
-            
         });
 
 

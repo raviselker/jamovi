@@ -1,0 +1,853 @@
+/* Aux module library styles. */
+
+.aux-module-section {
+    display: grid;
+    gap: 14px;
+}
+
+/* the view fills the panel, so the card list (not the panel) scrolls */
+.aux-panel-view[data-aux-view='modules'] {
+    height: 100%;
+}
+
+/* the panel's outer padding is sized for its own scrollbar, which sat
+   beyond it; the list's is inside the view, so the view takes back part of
+   that padding */
+#main-view[data-aux-side='end'] .aux-panel-view[data-aux-view='modules'] {
+    margin-inline-end: -12px;
+}
+
+.aux-module-view {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+}
+
+/* the list's scrollbar gutter (--aux-module-scrollbar, measured: chromium's
+   takes up space, firefox's overlay bar doesn't) comes out of the space
+   beside the cards, so their edge stays in line with the controls': 10px,
+   or the gutter if that's wider */
+.aux-module-view {
+    --aux-module-edge: max(10px, var(--aux-module-scrollbar, 0px));
+}
+
+.aux-module-controls {
+    position: relative;
+    z-index: 1;
+    padding-bottom: 6px;
+    padding-inline-end: var(--aux-module-edge);
+    background: #F8FAFD;
+    transition: box-shadow 0.15s ease;
+}
+
+.aux-module-controls.scrolled {
+    box-shadow: 0 6px 6px -6px rgba(38, 46, 56, 0.28);
+}
+
+/* the list fills the view's height, so its rows (and the section's) are
+   packed at the top rather than stretched to fill it */
+.aux-module-list,
+.aux-module-section {
+    align-content: start;
+}
+
+.aux-module-list {
+    overflow: auto;
+    min-height: 0;
+    margin-top: 0;
+    /*padding: 2px 2px 10px 2px;*/
+    padding-inline-end: calc(var(--aux-module-edge) - var(--aux-module-scrollbar, 0px));
+    /* where the scrollbar takes up space (chromium's does; firefox's
+       overlay bar doesn't), it's kept for it, so the cards don't move
+       when it appears */
+    scrollbar-gutter: stable;
+}
+
+.aux-module-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 2px;
+    margin: 0;
+}
+
+.aux-module-filter-row {
+    margin: 8px 0;
+}
+
+.aux-module-search-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin: 0 0 12px 0;
+}
+
+/* the height of the search box beside it */
+.aux-module-sideload-button {
+    flex: 0 0 auto;
+    min-height: 28px;
+}
+
+.aux-module-searchbox {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 1px solid #D7DDE5;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.92);
+    overflow: hidden;
+}
+
+.aux-module-search-icon {
+    width: 14px;
+    height: 14px;
+    margin-inline-start: 10px;
+    margin-inline-end: 8px;
+    background-image: url('../../../../assets/variable-search.svg');
+    background-repeat: no-repeat;
+    background-size: contain;
+    filter: opacity(0.45);
+    flex: 0 0 auto;
+}
+
+.aux-module-search-input {
+    flex: 1 1 auto;
+    /* an input won't shrink below its default width otherwise */
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: #334155;
+    padding-block: 9px;
+    padding-inline: 0 10px;
+    font: inherit;
+}
+
+.aux-module-search-input:focus {
+    outline: none;
+}
+
+.aux-module-searchbox:focus-within {
+    border-color: #B8C6D8;
+    background: rgba(235, 242, 251, 0.95);
+}
+
+/* the install progress (or update all) slides open when there's something
+   to show, rather than leaving space for it: its single child's row grows
+   from nothing to its own height */
+.aux-module-summary-progress {
+    display: grid;
+    grid-template-rows: 0fr;
+    margin: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: grid-template-rows 0.2s ease, margin 0.2s ease, opacity 0.2s ease, visibility 0s linear 0.2s;
+}
+
+/* scoped to the view to outweigh the children's own min-heights (the
+   progress bar's, the update all button's), which would stop the row
+   collapsing */
+.aux-module-view .aux-module-summary-progress > * {
+    min-height: 0;
+    /* clipped to collapse, but with room for a focus outline to show */
+    overflow: clip;
+    overflow-clip-margin: 4px;
+}
+
+/* button-sized, rather than stretched across the grid */
+.aux-module-summary-progress > button {
+    justify-self: start;
+}
+
+.aux-module-summary-progress.active {
+    grid-template-rows: 1fr;
+    margin: -4px 0 8px 0;
+    opacity: 1;
+    visibility: visible;
+    transition: grid-template-rows 0.2s ease, margin 0.2s ease, opacity 0.2s ease, visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aux-module-summary-progress,
+    .aux-module-summary-progress.active {
+        transition: none;
+    }
+}
+
+.aux-module-message {
+    margin: 0 0 8px 0;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #FFF7E6;
+    color: #7A5B13;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.aux-module-message[hidden] {
+    display: none;
+}
+
+.aux-module-summary-action {
+    min-height: 22px;
+    padding: 3px 8px;
+    font-size: 11px;
+    line-height: 1.1;
+}
+
+/* compact text filters, with a separator between neighbours */
+.aux-module-tab {
+    position: relative;
+    border: none;
+    border-radius: 0;
+    background: none;
+    color: #475569;
+    font: inherit;
+    padding: 3px 7px;
+}
+
+/* drawn outside the button (centred in the gap between them), so a hover
+   background doesn't cover it */
+.aux-module-tab + .aux-module-tab {
+    margin-inline-start: 5px;
+}
+
+.aux-module-tab + .aux-module-tab::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: -3px;
+    top: 25%;
+    bottom: 25%;
+    width: 1px;
+    background: #CBD5E1;
+}
+
+.aux-module-tab:hover,
+.aux-module-tab:focus-visible {
+    background: rgba(62, 109, 169, 0.10);
+    outline: none;
+}
+
+[keyboardfocus="true"] .aux-module-tab:focus {
+    background: rgba(62, 109, 169, 0.10);
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+}
+
+/* an underline rather than bold, which would change its width and shift
+   the filters along */
+.aux-module-tab.active {
+    color: #1E3A5F;
+    box-shadow: inset 0 -2px 0 #3E6DA9;
+}
+
+.aux-module-card {
+    position: relative;
+    display: grid;
+    gap: 9px;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #DDE4EE;
+    border-radius: 14px;
+    padding: 14px 14px 12px 14px;
+    background: #FFFFFF;
+    box-shadow: 0 1px 2px rgba(30, 41, 59, 0.04);
+    transition: height 0.24s ease, opacity 0.24s ease, padding 0.24s ease, border-width 0.24s ease;
+}
+
+.aux-module-card.installed-in-library {
+    border-color: rgba(117, 200, 148, 0.52);
+    background: linear-gradient(180deg, rgba(223, 242, 230, 0.09), #FFFFFF 18%);
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+}
+
+.aux-module-card.available-in-library {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+}
+
+.aux-module-card.installed-in-library > :not(.aux-module-header):not(.aux-module-installed-badge),
+.aux-module-card.available-in-library > :not(.aux-module-header):not(.aux-module-installed-badge) {
+    grid-column: 1 / -1;
+}
+
+.aux-module-search-highlight {
+    border-radius: 3px;
+    background: rgba(255, 218, 88, 0.38);
+    color: inherit;
+}
+
+.aux-module-card.removing {
+    height: 0 !important;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    pointer-events: none;
+}
+
+.aux-module-progress-wrap-summary {
+    min-height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+.aux-module-section > .aux-module-card:not(:last-child) {
+    margin-bottom: 0;
+}
+
+.aux-module-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    min-width: 0;
+}
+
+.aux-module-icon {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    background: #D7F0E0;
+    color: #1B7A4A;
+    font-size: 19px;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.aux-module-card:nth-child(3n) .aux-module-icon {
+    background: #DCE9F6;
+    color: #24527D;
+}
+
+.aux-module-card:nth-child(3n + 2) .aux-module-icon {
+    background: #E6F0DD;
+    color: #426B23;
+}
+
+.aux-module-title-wrap {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.aux-module-title {
+    font-weight: 700;
+    color: #08264B;
+    font-size: 17px;
+    line-height: 1.18;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.aux-module-package-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+}
+
+.aux-module-name {
+    color: #58677C;
+    font-size: 11px;
+    line-height: 1.2;
+    font-family: Consolas, 'Courier New', monospace;
+    overflow-wrap: anywhere;
+}
+
+.aux-module-version {
+    display: inline-flex;
+    align-items: center;
+    min-height: 19px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #DFF2E6;
+    color: #18804B;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    font-family: Consolas, 'Courier New', monospace;
+}
+
+.aux-module-meta {
+    border: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+    background: transparent;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #53657E;
+    text-align: start;
+    /* clamped by height rather than -webkit-line-clamp, which can't lay
+       out the block content (paragraphs, lists) descriptions contain */
+    display: block;
+    max-height: calc(1.45em * 3);
+    white-space: normal;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    cursor: default;
+}
+
+/* only a collapsed description that's cut off is faded */
+.aux-module-meta.clamped:not(.expanded) {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1.45em), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 1.45em), transparent);
+}
+
+.aux-module-meta ul,
+.aux-module-meta ol {
+    margin: 0;
+    padding-inline-start: 1.25em;
+}
+
+.aux-module-meta p + ul,
+.aux-module-meta p + ol,
+.aux-module-meta ul + p,
+.aux-module-meta ol + p {
+    margin-top: 0.5em;
+}
+
+.aux-module-meta p {
+    margin: 0;
+}
+
+.aux-module-meta p + p {
+    margin-top: 0.5em;
+}
+
+.aux-module-meta a {
+    color: #4F86D9;
+    text-decoration: none;
+}
+
+.aux-module-meta a:hover,
+.aux-module-meta a:focus-visible {
+    text-decoration: underline;
+    outline: none;
+}
+
+.aux-module-meta.expanded {
+    max-height: none;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+
+.aux-module-meta:focus-visible {
+    outline: none;
+    color: #475569;
+}
+
+/* the fade would mask the outline, so a focused description is shown in full */
+[keyboardfocus="true"] .aux-module-meta:focus {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+
+[keyboardfocus="true"] .aux-module-meta a:focus {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+}
+
+.aux-module-authors {
+    border-top: 1px solid #DDE4EE;
+    padding-top: 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #64748B;
+    overflow-wrap: anywhere;
+}
+
+.aux-module-actions,
+.aux-module-analyses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.aux-module-analyses-list {
+    padding-top: 0;
+}
+
+.aux-module-analyses-summary {
+    color: #64748B;
+    font-size: 11px;
+    line-height: 1.35;
+    cursor: default;
+    user-select: none;
+    list-style: none;
+}
+
+.aux-module-analyses-summary::-webkit-details-marker {
+    display: none;
+}
+
+.aux-module-analyses-summary::before {
+    content: ">";
+    display: inline-block;
+    margin-inline-end: 6px;
+    color: #94A3B8;
+    transform: rotate(0deg);
+    transition: transform 0.12s ease;
+}
+
+.aux-module-analyses-list[open] .aux-module-analyses-summary::before {
+    transform: rotate(90deg);
+}
+
+/* the marker points along the reading direction, and turns down to open */
+body[dir='rtl'] .aux-module-analyses-summary::before {
+    content: "<";
+}
+
+body[dir='rtl'] .aux-module-analyses-list[open] .aux-module-analyses-summary::before {
+    transform: rotate(-90deg);
+}
+
+.aux-module-analyses-items {
+    display: grid;
+    gap: 3px;
+    margin-top: 6px;
+    padding-inline-start: 14px;
+}
+
+.aux-module-analysis-link {
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: #475569;
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: start;
+}
+
+.aux-module-analysis-link:hover,
+.aux-module-analysis-link:focus-visible {
+    color: #2F4A66;
+    text-decoration: underline;
+    outline: none;
+}
+
+[keyboardfocus="true"] .aux-module-analysis-link:focus {
+    color: #2F4A66;
+    text-decoration: underline;
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+}
+
+.aux-module-action-button,
+.aux-module-analysis-button {
+    border: 1px solid #D7DDE5;
+    border-radius: 7px;
+    background: rgba(248, 250, 252, 0.98);
+    color: #334155;
+    padding: 4px 7px;
+    font-size: 11px;
+    line-height: 1.25;
+    min-width: 0;
+    max-width: 100%;
+    text-align: start;
+    box-shadow: none;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.aux-module-action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.aux-module-action-icon {
+    width: 12px;
+    height: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.aux-module-action-icon svg {
+    width: 12px;
+    height: 12px;
+    display: block;
+}
+
+.aux-module-action-label {
+    display: inline-block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.aux-module-action-button[data-emphasis='primary'] {
+    border-color: #DCE3EC;
+    background: rgba(241, 245, 249, 0.92);
+    color: #475569;
+}
+
+.aux-module-action-button[data-emphasis='attention'] {
+    border-color: #B45309;
+    background: #B45309;
+    color: #FFFFFF;
+}
+
+.aux-module-action-button[data-emphasis='attention']:hover,
+.aux-module-action-button[data-emphasis='attention']:focus-visible {
+    border-color: #92400E;
+    background: #92400E;
+    color: #FFFFFF;
+}
+
+.aux-module-action-button[data-emphasis='subtle'] {
+    border-color: #DCE3EC;
+    background: rgba(241, 245, 249, 0.92);
+    color: #475569;
+}
+
+.aux-module-action-button:hover,
+.aux-module-action-button:focus-visible,
+.aux-module-analysis-button:hover,
+.aux-module-analysis-button:focus-visible {
+    background: rgba(237, 243, 248, 0.98);
+    border-color: #B8C6D8;
+    outline: none;
+}
+
+[keyboardfocus="true"] .aux-module-action-button:focus,
+[keyboardfocus="true"] .aux-module-analysis-button:focus {
+    background: rgba(237, 243, 248, 0.98);
+    border-color: #B8C6D8;
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+}
+
+.aux-module-action-button[data-emphasis='primary']:hover,
+.aux-module-action-button[data-emphasis='primary']:focus-visible {
+    background: rgba(238, 242, 246, 0.98);
+    border-color: #CCD6E2;
+    color: #334155;
+}
+
+.aux-module-action-button[data-emphasis='subtle']:hover,
+.aux-module-action-button[data-emphasis='subtle']:focus-visible {
+    background: rgba(238, 242, 246, 0.98);
+    border-color: #CCD6E2;
+    color: #334155;
+}
+
+.aux-module-action-button:disabled,
+.aux-module-action-button[aria-disabled='true'],
+.aux-module-analysis-button:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.aux-module-analysis-button {
+    font-size: 11px;
+    border-radius: 8px;
+    padding: 4px 7px;
+}
+
+.aux-module-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 7px;
+    border: 1px solid #D7DDE5;
+    border-radius: 7px;
+    background: rgba(248, 250, 252, 0.98);
+    color: #64748B;
+    font-size: 11px;
+    line-height: 1.2;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.aux-module-status-chip > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.aux-module-status-icon {
+    width: 12px;
+    height: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    color: #18804B;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.aux-module-status-icon svg {
+    width: 12px;
+    height: 12px;
+    display: block;
+}
+
+.aux-module-status-chip[data-tone='warning'] {
+    border-color: #E2D2B4;
+    background: rgba(248, 242, 231, 0.98);
+    color: #8A6130;
+}
+
+/* a status label rather than a control, so it has no fill or border that
+   would make it look clickable */
+.aux-module-status-chip.aux-module-installed-badge {
+    justify-self: end;
+    align-self: start;
+    white-space: nowrap;
+    padding: 2px 0;
+    border: none;
+    background: none;
+    color: #15803D;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 1;
+    transition: opacity 0.2s ease-out;
+}
+
+.aux-module-status-chip.aux-module-installed-badge[data-tone='info'] {
+    color: #2F5E9E;
+}
+
+.aux-module-status-chip.aux-module-installed-badge[data-tone='warning'] {
+    color: #B45309;
+}
+
+.aux-module-installed-badge.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.aux-module-installed-badge .aux-module-status-icon {
+    color: inherit;
+}
+
+.aux-module-card.needs-update {
+    border-color: #E0A84F;
+}
+
+.aux-module-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: #FEF3E2;
+    color: #8A4B08;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.aux-module-notice[hidden] {
+    display: none;
+}
+
+.aux-module-notice .aux-module-status-icon {
+    color: #B45309;
+    margin-top: 1px;
+}
+
+.aux-module-progress-wrap {
+    min-height: 24px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(42px, 1fr) auto auto;
+    align-items: center;
+    column-gap: 8px;
+}
+
+.aux-module-progress-cancel {
+    justify-self: end;
+    min-height: 24px;
+}
+
+.aux-module-progress-text {
+    font-size: 11px;
+    line-height: 1.2;
+    color: #64748B;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.aux-module-progress {
+    margin-top: 0;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(209, 214, 221, 0.8);
+    overflow: hidden;
+    align-self: center;
+}
+
+.aux-module-progress-bar {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #5E8FD3 0%, #4270B0 100%);
+}
+
+.aux-module-progress-label {
+    margin-top: 0;
+    font-size: 11px;
+    line-height: 1.2;
+    color: #64748B;
+    justify-self: end;
+    align-self: center;
+    white-space: nowrap;
+    min-width: 40px;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+
+/* forced colours replace backgrounds, so state shown only through them (the
+   active filter, search highlights, the progress fill) uses system colours */
+@media (forced-colors: active) {
+    .aux-module-tab.active {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+
+    .aux-module-search-highlight {
+        forced-color-adjust: none;
+        background: Mark;
+        color: MarkText;
+    }
+
+    .aux-module-progress {
+        border: 1px solid CanvasText;
+    }
+
+    .aux-module-progress-bar {
+        forced-color-adjust: none;
+        background: Highlight;
+    }
+
+    .aux-module-message,
+    .aux-module-notice {
+        border: 1px solid CanvasText;
+    }
+
+    .aux-module-action-button[data-emphasis='attention'] {
+        border-width: 2px;
+    }
+
+    .aux-module-meta.clamped:not(.expanded) {
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    .aux-module-action-button[aria-disabled='true'] {
+        color: GrayText;
+    }
+}

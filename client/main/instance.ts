@@ -139,6 +139,7 @@ export interface IFileEntry {
 
 export interface IModuleInteractions {
     installModule: (name: string) => ProgressStream<[number, number], void>,
+    cancelInstallModule: (name: string) => PromiseLike<void>,
     uninstallModule: (name: string) => PromiseLike<void>,
     setModuleVisibility: (name: string, value: boolean) => PromiseLike<void>,
     retrieveAvailableModules: () => PromiseLike<void>,
@@ -948,6 +949,22 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
 
         let moduleRequest = new coms.Messages.ModuleRR();
         moduleRequest.command = coms.Messages.ModuleRR.ModuleCommand.INSTALL;
+        moduleRequest.path = filePath;
+
+        let request = new coms.Messages.ComsMessage();
+        request.payload = moduleRequest.toArrayBuffer();
+        request.payloadType = 'ModuleRR';
+        request.instanceId = this._instanceId;
+
+        return coms.send(request);
+    }
+
+    cancelInstallModule(filePath: string) {
+
+        let coms = this.attributes.coms;
+
+        let moduleRequest = new coms.Messages.ModuleRR();
+        moduleRequest.command = coms.Messages.ModuleRR.ModuleCommand.CANCEL_INSTALL;
         moduleRequest.path = filePath;
 
         let request = new coms.Messages.ComsMessage();

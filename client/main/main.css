@@ -18,8 +18,6 @@
 @import "ribbon/ribbonmenu.css";
 @import "ribbon/appmenu.css";
 @import "ribbon/notifs.css";
-@import "store.css";
-@import "store/pages.css";
 @import "contextmenu/contextmenubutton.css";
 @import "contextmenu/contextmenusplitbutton.css";
 @import "contextmenu/contextmenus.css";

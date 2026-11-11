@@ -342,6 +342,14 @@ export class InteractionManager extends EventEmitter {
     }
 
     /**
+     * Whether the user is navigating with the keyboard (the keyboard,
+     * accessible and KeyTips modes).
+     */
+    inKeyboardMode(): boolean {
+        return this.modes.inKeyboardMode();
+    }
+
+    /**
      * Registers an element as a focus loop and returns the loop handle used for
      * activate/deactivate events and per-loop configuration.
      */

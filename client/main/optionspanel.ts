@@ -18,7 +18,7 @@ import DataSetViewModel from './dataset';
 import { Analysis } from './analyses';
 import Settings from './settings';
 import Instance, { IFileEntry } from './instance';
-import Store from './store';
+import type { IModuleLibrary } from './modulelibrary';
 
 interface IFrameCommsApi {
     frameDocumentReady: (data: any) => void;
@@ -49,7 +49,7 @@ class AnalysisResources extends EventEmitter {
     jamoviVersion: string;
     uploads: Set<AbortController>;
 
-    constructor(analysis: Analysis, target: HTMLElement, iframeUrl: string, public instance: Instance, public settings: Settings, public store: Store) {
+    constructor(analysis: Analysis, target: HTMLElement, iframeUrl: string, public instance: Instance, public settings: Settings, public library: IModuleLibrary) {
         super();
 
         const instanceId = instance.instanceId();
@@ -81,7 +81,7 @@ class AnalysisResources extends EventEmitter {
                 switch (action.type) {
                     case 'findModule':
                         const moduleName = this.analysis.ns;
-                        this.store.show(1, `module::${moduleName}`);
+                        this.library.show('all', `module::${moduleName}`);
                 }
             },
 
@@ -337,7 +337,7 @@ class OptionsPanel {
     _analysesResources: { [key: string]: AnalysisResources } ;
     dataSetModel: DataSetViewModel
 
-    constructor(public el: HTMLElement, public model: Instance, public iframeUrl: string, public store: Store ) {
+    constructor(public el: HTMLElement, public model: Instance, public iframeUrl: string, public library: IModuleLibrary ) {
 
         this._analysesResources = {};
 
@@ -407,7 +407,7 @@ class OptionsPanel {
         let createdNew = false;
 
         if (resources === undefined) {
-            resources = new AnalysisResources(analysis, this.el, this.iframeUrl, this.model, this.model.settings(), this.store);
+            resources = new AnalysisResources(analysis, this.el, this.iframeUrl, this.model, this.model.settings(), this.library);
             resources.setDataModel(this.dataSetModel);
             this._analysesResources[analysesKey] = resources;
             createdNew = true;

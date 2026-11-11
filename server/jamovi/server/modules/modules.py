@@ -5,7 +5,10 @@ import logging
 import shutil
 import json
 from zipfile import ZipFile
+from asyncio import Lock
+from asyncio import shield
 from collections import namedtuple
+from typing import Callable
 from functools import lru_cache
 
 import yaml
@@ -203,6 +206,7 @@ class Modules:
         self._listeners = [ ]
         self._original: list | None = None
         self._read_task = None
+        self._install_lock = Lock()
 
     def get(self, name):
         for module in self._modules:
@@ -392,25 +396,29 @@ class Modules:
 
     async def install_from_file(self, path, update: bool = False):
 
-        with ZipFile(path) as zip_file:
+        # installs are serialised, so that concurrent installs can't
+        # interleave their extraction and rereading of the module list
+        async with self._install_lock:
 
-            module_dir = os.path.join(Dirs.app_data_dir(), 'modules')
-            module_name = zip_file.namelist()[0].split('/')[0]
-            module_path = os.path.join(module_dir, module_name)
+            with ZipFile(path) as zip_file:
 
-            shutil.rmtree(module_path, ignore_errors=True)
-            zip_file.extractall(module_dir)
+                module_dir = os.path.join(Dirs.app_data_dir(), 'modules')
+                module_name = zip_file.namelist()[0].split('/')[0]
+                module_path = os.path.join(module_dir, module_name)
 
-        meta = self._read_module(module_path)
+                shutil.rmtree(module_path, ignore_errors=True)
+                zip_file.extractall(module_dir)
 
-        await self._reread_installed()
+            meta = self._read_module(module_path)
+
+            await self._reread_installed()
 
         if update:
             self._notify_listeners({ 'type': 'moduleUpdated', 'data': { 'name': meta.name }})
         self._notify_listeners({ 'type': 'modulesChanged' })
 
     @progress_stream
-    async def install(self, progress, path: str):
+    async def install(self, progress, path: str, on_extract: Callable[[], None] | None = None):
         if path.startswith(LIBRARY_ROOT):
             in_stream = Downloader.download(path)
             try:
@@ -421,7 +429,12 @@ class Modules:
                 in_stream.cancel()  # does nothing if it's done
             verify_jmo(path)
 
-        await self.install_from_file(path)
+        # an install can only be cancelled while it is downloading; once
+        # extraction begins it runs to completion, so it's shielded from
+        # cancellation, and the caller is told so it can refuse to cancel
+        if on_extract is not None:
+            on_extract()
+        await shield(self.install_from_file(path))
         return (1, 1)
 
     def __iter__(self):

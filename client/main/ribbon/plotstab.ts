@@ -10,19 +10,15 @@ import RibbonSeparator from './ribbonseparator';
 import { Modules } from '../modules';
 import Settings from '../settings';
 import { RibbonModel } from '../ribbon';
-import Store from '../store';
 
-//import Store from '../store';
 
 class PlotsTab extends RibbonTab {
     buttons: RibbonItem[] = [ ];
     settings: Settings;
     modules: Modules;
-    _moduleCount = 0;
-    _analysesList = { };
     _moreIndex: number = -1;
 
-    constructor(modules: Modules, model: RibbonModel, public store: Store) {
+    constructor(modules: Modules, model: RibbonModel) {
         super('plots', 'P', _('Plots'));
         this.modules = modules;
         this.settings = model.settings();
@@ -61,61 +57,7 @@ class PlotsTab extends RibbonTab {
         if ( ! this.modules)
             return this.buttons;
 
-        let moduleList = [];
-        this._analysesList = { };
-        this._moduleCount = 0;
         let modules = this.modules.get('modules');
-        for (let module of modules) {
-            let _translate = await module.getTranslator;
-            if (module.analyses.length > 0) {
-                if (this._analysesList[module.name] === undefined) {
-                    this._analysesList[module.name] = { version: module.version, analyses: [] };
-                    this._moduleCount += 1;
-                }
-                let subtitle = module.title;
-                // This regex is used to trim off any leading shortname (as well as seperators) from the title
-                // E.G The module title 'GAMLj - General Analyses for Linear Models' will be trimmed to 'General Analyses for Linear Models'.
-                let re = new RegExp('^' + module.name + '([ :-]{1,3})', 'i');
-                subtitle = subtitle.replace(re, '');
-                let moduleItem = { name : module.name, title : _translate(module.name), subtitle: _translate(subtitle), ns : 'installed', type: 'module', checked: module.visible  };
-                let analyses = { name: 'plots', title: _('Plots'), type: 'group', items: [ ] };
-                for (let analysis of module.analyses) {
-                    if (analysis.category === 'plots') {
-                        this._analysesList[module.name].analyses.push(analysis.name);
-                        let analysisItem = {
-                            name: analysis.name,
-                            ns: analysis.ns,
-                            title: _translate(analysis.menuTitle),
-                            subtitle: _translate(analysis.menuSubtitle),
-                            moduleName: module.name,
-                            resultsTitle: _translate(analysis.title)
-                        };
-                        analyses.items.push(analysisItem);
-                    }
-                }
-                if (analyses.items.length > 0) {
-                    moduleItem.analyses = analyses;
-                    moduleList.push(moduleItem);
-                }
-                else {
-                    delete this._analysesList[module.name];
-                    this._moduleCount -= 1;
-                }
-            }
-        }
-
-        let buttonId = interactionManager.nextAriaId('button');
-        let  button = new RibbonMenu(_('Modules'), 'modules', 'M', [
-            { name : 'modules', title : _('jamovi library'), ns : 'app' },
-            { name : 'manageMods', title : _('Manage installed'), ns : 'app' },
-            { name: 'installedList', title: _('Installed Modules'), type: 'group', items: moduleList }
-        ], true, false);
-        button.setAttribute('id', buttonId);
-        button.classList.add('jmv-modules-menu-item');
-        button.style.position = 'sticky';
-        button.style.insetInlineEnd =  '0px';
-        button.style.insetInlineStart =  '0px';
-        this.buttons.push(button);
 
         let menus = { };
         let lastSub = null;
@@ -178,7 +120,8 @@ class PlotsTab extends RibbonTab {
                     }
                 }
                 buttons.push(new RibbonSeparator());
-                this._moreIndex = buttons.length + 1;  // the plus one is because of the library button
+                // between the two separators, where the 'More' menu goes
+                this._moreIndex = this.buttons.length + buttons.length;
                 buttons.push(new RibbonSeparator());
                 this.buttons.push(...buttons);
             }
@@ -224,15 +167,8 @@ class PlotsTab extends RibbonTab {
         return this.buttons;
     }
 
-    private _analysisSelected(analysis: { name: string, ns: string, title: string, checked?: boolean }) {
-       if (analysis.name === 'modules' && analysis.ns === 'app')
-            this.store.show(1, 'plot::');
-        else if (analysis.name === 'manageMods' && analysis.ns === 'app')
-            this.store.show(0, 'plot::');
-        else if (analysis.ns === 'installed')
-            this.modules.setModuleVisibility(analysis.name, analysis.checked);
-        else
-            this.emit('analysisSelected', analysis);
+    private _analysisSelected(analysis: { name: string, ns: string, title: string }) {
+        this.emit('analysisSelected', analysis);
     }
 }
 

@@ -6,21 +6,16 @@ import RibbonTab, { RibbonItem } from './ribbontab';
 import Placeholder from './placeholder';
 import interactionManager from '../../common/interactionmanager';
 
-import Store from '../store';
 import { Modules } from '../modules';
 import Settings from '../settings';
 
 export class AnalyseTab extends RibbonTab {
     buttons: RibbonItem[] = [ ];
-    _moduleCount = 0;
-    _analysesList = { };
 
-    constructor(public modules: Modules, public settings: Settings, public store: Store) {
+    constructor(public modules: Modules, public settings: Settings) {
         super('analyses', 'A', _('Analyses'));
         this.modules = modules;
         this.buttons = [ ];
-        this._analysesList = { };
-        this._moduleCount = 0;
 
         this.modules.on('moduleVisibilityChanged', this._onModuleVisibilityChanged, this);
         this.modules.on('modulesChanged', this.update, this);
@@ -56,61 +51,7 @@ export class AnalyseTab extends RibbonTab {
         if ( ! this.modules)
             return this.buttons;
 
-        let moduleList = [];
-        this._analysesList = { };
-        this._moduleCount = 0;
         let modules = this.modules.get('modules');
-        for (let module of modules) {
-            if (module.analyses.length > 0) {
-                let _translate = await module.getTranslator;
-                if (this._analysesList[module.name] === undefined) {
-                    this._analysesList[module.name] = { version: module.version, analyses: [] };
-                    this._moduleCount += 1;
-                }
-                let subtitle = module.title;
-                // This regex is used to trim off any leading shortname (as well as seperators) from the title
-                // E.G The module title 'GAMLj - General Analyses for Linear Models' will be trimmed to 'General Analyses for Linear Models'.
-                let re = new RegExp('^' + module.name + '([ :-]{1,3})', 'i');
-                subtitle = subtitle.replace(re, '');
-                let moduleItem = { name : module.name, title : _translate(module.name), subtitle: _translate(subtitle), ns : 'installed', type: 'module', checked: module.visible  };
-                let analyses = { name: 'analyses', title: _('Analyses'), type: 'group', items: [ ] };
-                for (let analysis of module.analyses) {
-                    if (analysis.category === undefined || analysis.category === 'analyses') {
-                        this._analysesList[module.name].analyses.push(analysis.name);
-                        let analysisItem = {
-                            name: analysis.name,
-                            ns: analysis.ns,
-                            title: _translate(analysis.menuTitle),
-                            subtitle: _translate(analysis.menuSubtitle),
-                            moduleName: module.name,
-                            resultsTitle: _translate(analysis.title)
-                        };
-                        analyses.items.push(analysisItem);
-                    }
-                }
-                if (analyses.items.length > 0) {
-                    moduleItem.analyses = analyses;
-                    moduleList.push(moduleItem);
-                }
-                else {
-                    delete this._analysesList[module.name];
-                    this._moduleCount -= 1;
-                }
-            }
-        }
-
-        let buttonId = interactionManager.nextAriaId('button');
-        let  button = new RibbonMenu(_('Modules'), 'modules', 'M', [
-            { name : 'modules', title : _('jamovi library'), ns : 'app' },
-            { name : 'manageMods', title : _('Manage installed'), ns : 'app' },
-            { name: 'installedList', title: _('Installed Modules'), type: 'group', items: moduleList }
-        ], true, false);
-        button.setAttribute('id', buttonId);
-        button.classList.add('jmv-modules-menu-item');
-        button.style.position = 'sticky';
-        button.style.insetInlineEnd =  '0px';
-        button.style.insetInlineStart =  '0px';
-        this.buttons.push(button);
 
         let menus = { };
         for (let module of modules) {
@@ -188,15 +129,8 @@ export class AnalyseTab extends RibbonTab {
         return this.buttons;
     }
 
-    public _analysisSelected(analysis: { name: string, ns: string, title: string, checked: boolean }) {
-        if (analysis.name === 'modules' && analysis.ns === 'app')
-            this.store.show(1);
-        else if (analysis.name === 'manageMods' && analysis.ns === 'app')
-            this.store.show(0);
-        else if (analysis.ns === 'installed')
-            this.modules.setModuleVisibility(analysis.name, analysis.checked);
-        else
-            this.emit('analysisSelected', analysis);
+    public _analysisSelected(analysis: { name: string, ns: string, title: string }) {
+        this.emit('analysisSelected', analysis);
     }
 }
 

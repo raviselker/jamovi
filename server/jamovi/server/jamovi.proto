@@ -699,6 +699,7 @@ message ModuleRR {
         UNINSTALL = 1;
         HIDE = 2;
         SHOW = 3;
+        CANCEL_INSTALL = 4;
     }
 
     ModuleCommand command = 1;

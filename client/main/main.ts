@@ -43,7 +43,8 @@ import type { InfoBox } from './infobox';
 
 import keyboardJS  from 'keyboardjs';
 import HighContrast from '../common/highcontrast';
-import Store from './store';
+import type { IModuleLibrary } from './modulelibrary';
+import ModulesAuxView from './auxiliary/entries/modules/view';
 import { relocate } from './relocate';
 
 declare global {
@@ -166,15 +167,11 @@ keyboardJS.Keyboard.prototype.resume = function(key) {
 
 const instance = new Instance(coms);
 
-const store = new Store(instance.settings(), instance.modules());
-store.classList.add('jmv-store');
-document.body.append(store);
-
 let dataSetModel = instance.dataSetModel();
 let analyses = instance.analyses();
 
 let backstageModel = new BackstageModel(instance);
-let ribbonModel = new RibbonModel(instance.modules(), instance.settings(), store);
+let ribbonModel = new RibbonModel(instance.modules(), instance.settings());
 
 // this is passing over a context boundary, so can't pass complex objects
 host.setDialogProvider({ showDialog: (op:string, options: IShowDialogOptions) => backstageModel.showDialog(op, options) });
@@ -261,7 +258,6 @@ const highContrast = new HighContrast(document.body, document.body, () => {
         .silky-bs-fslist-entry-icon,
         .jmv-ribbon-button-icon, 
         .jmv-column-header-icon,
-        .jmv-store-module-icon,
         .measure-type-icon,
         .silky-bs-flist-item-folder-browse-icon,
         .silky-bs-fslist-browser-check-button,
@@ -272,7 +268,6 @@ const highContrast = new HighContrast(document.body, document.body, () => {
     return document.body.querySelectorAll(`
         .silky-bs-logo,
         .jmv-ribbon-fullscreen,
-        .jmv-store-header-logo,
         .silky-bs-back-button > div
         `);
 }, true);
@@ -330,7 +325,7 @@ ready(async() => {
     }, _('Open application menu'));
     shortcuts.register('Alt+KeyL', () => { // navigate to Modules library
         interactionManager.setMode('keyboard');
-        ribbonModel.getTab('analyses').store.show(1);
+        auxShell?.showView('modules');
     }, _('Open the jamovi module library'));
     shortcuts.register('Alt+ArrowLeft', () => { // navigate to Options panel
         let iframe = document.querySelector(`.results-loop-highlighted-item > iframe`);
@@ -736,6 +731,16 @@ ready(async() => {
     auxShell.mount();
     auxShell.initialise();
 
+    // the module library is the aux panel's modules view
+    const modulesView = auxShell.views.find(view => view.id === 'modules');
+    const library: IModuleLibrary = {
+        show: (filter, searchTerm = '') => {
+            if (modulesView instanceof ModulesAuxView)
+                modulesView.showFiltered(filter, searchTerm);
+            auxShell?.showView('modules');
+        },
+    };
+
     let mainTable = new TableView(dataSetModel, viewController, instance.settings());
     mainTable.id = 'spreadsheet';
     $mainTable.append(mainTable);
@@ -924,7 +929,7 @@ ready(async() => {
         }
     });
 
-    let optionspanel = new OptionsPanel(document.querySelector('#main-options'), instance, host.analysisUIUrl, store);
+    let optionspanel = new OptionsPanel(document.querySelector('#main-options'), instance, host.analysisUIUrl, library);
     optionspanel.setDataSetModel(dataSetModel);
     optionspanel.el.addEventListener('splitpanel-hide', () =>  window.focus() );
 
@@ -938,7 +943,6 @@ ready(async() => {
     ribbon.addEventListener('notification', (event: CustomEvent) => notifications.notify(event.detail));
     editor.addEventListener('notification', (event: CustomEvent) => notifications.notify(event.detail));
     backstageModel.on('notification', note => notifications.notify(note));
-    store.addEventListener('notification', (event: CustomEvent) => notifications.notify(event.detail));
 
     dataSetModel.on('change:edited', event => {
         host.setEdited(dataSetModel.attributes.edited);
