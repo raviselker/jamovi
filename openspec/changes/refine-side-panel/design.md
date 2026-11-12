@@ -25,6 +25,9 @@ See proposal.md for the motivation. Specs: `side-panel-rail`, `side-panel-search
 ### The rail is always shown
 A Gmail-style handle that collapsed the rail was built and dropped: the entries are important enough to stay in view, and the rail is narrow.
 
+### A grey rail, not a blue one
+The rail was first jamovi blue with white icons, like the ribbon's tab bar. Reviewers found a full-height blue strip too strong at the window's edge, so the colours are flipped: grey with blue icons. The open entry takes the panel's colour with a blue bar toward the panel, rather than solid blue, which would again be the strongest thing on screen.
+
 ### Only app-level entries in the rail
 A results outline belongs in the results pane, since it means nothing without it; data transforms belong with the variables. A notifications entry was dropped: most of jamovi's notifications are short-lived toasts, so an inbox would usually be empty.
 

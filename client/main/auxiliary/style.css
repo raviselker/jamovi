@@ -63,8 +63,8 @@ body[dir='rtl'] #main-view {
     overflow-y: auto;
     /* overflow-y alone makes x scrollable too */
     overflow-x: hidden;
-    /* the ribbon's tab bar, on its side */
-    background: #3E6DA9;
+    /* the ribbon's grey, the blue kept for the icons and the open entry */
+    background: #F0F0F0;
     /* keeps the active button, which is the panel's colour, off the ribbon's edge */
     padding-top: 8px;
     z-index: 55;
@@ -73,19 +73,23 @@ body[dir='rtl'] #main-view {
 #main-view[data-aux-side='start'] #aux-toolbar {
     inset-inline-start: 0;
     inset-inline-end: auto;
+    border-inline-end: 1px solid #CCCCCC;
 }
 
 #main-view[data-aux-side='end'] #aux-toolbar {
     inset-inline-start: auto;
     inset-inline-end: 0;
+    border-inline-start: 1px solid #CCCCCC;
 }
 
 .aux-toolbar-button {
     width: 100%;
     height: 42px;
     border: none;
+    /* the open entry's edge, on the panel's side */
+    border-inline: 3px solid transparent;
     background: transparent;
-    color: #FFFFFF;
+    color: #3E6DA9;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -133,7 +137,7 @@ body[dir='rtl'] #main-view {
     inset-inline-start: 6px;
     inset-inline-end: 6px;
     height: 3px;
-    background: #FFFFFF;
+    background: #3E6DA9;
     border-radius: 999px;
 }
 
@@ -167,17 +171,17 @@ body[dir='rtl'] #main-view {
 }
 
 .aux-toolbar-button:hover {
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(62, 109, 169, 0.12);
 }
 
 .aux-toolbar-button:focus-visible {
-    background: rgba(255, 255, 255, 0.28);
+    background: rgba(62, 109, 169, 0.2);
     outline: none;
 }
 
 /* inside the button: the toolbar clips what's beyond it */
 [keyboardfocus="true"] .aux-toolbar-button:focus {
-    outline: 2px solid #FFFFFF;
+    outline: 2px solid #3E6DA9;
     outline-offset: -2px;
 }
 
@@ -188,6 +192,14 @@ body[dir='rtl'] #main-view {
     background: #F8F8F8;
     color: #3E6DA9;
     outline-color: Highlight;
+}
+
+#main-view[data-aux-side='end'] .aux-toolbar-button.active {
+    border-inline-start-color: #3E6DA9;
+}
+
+#main-view[data-aux-side='start'] .aux-toolbar-button.active {
+    border-inline-end-color: #3E6DA9;
 }
 
 .aux-toolbar-button.active .aux-toolbar-icon {

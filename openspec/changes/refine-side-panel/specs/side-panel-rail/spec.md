@@ -7,11 +7,11 @@ The rail on the window's edge that opens the side panel's panels: its look, its 
 ## ADDED Requirements
 
 ### Requirement: jamovi look
-The rail SHALL be jamovi blue (#3E6DA9) with solid white icons, like the ribbon's tab bar. The button of the panel showing SHALL take the panel's background colour with a blue icon, like the ribbon's selected tab. The rail SHALL leave a strip of blue above its first button. The panel SHALL use jamovi's greys, 3 px radii and the results' 5 px grey shadow.
+The rail SHALL be the ribbon's light grey (#F0F0F0), divided from what's beside it by a grey rule, with solid jamovi blue (#3E6DA9) icons. The button of the panel showing SHALL take the panel's background colour, with a blue bar on its edge toward the panel, like the ribbon's selected tab. The rail SHALL leave a strip above its first button. The panel SHALL use jamovi's greys, 3 px radii and the results' 5 px grey shadow.
 
 #### Scenario: A panel is open
 - **WHEN** the Module Library is open
-- **THEN** its rail button has the panel's light grey background and a blue icon, and the other buttons are white icons on blue
+- **THEN** its rail button has the panel's light grey background and a blue icon, with a blue bar on the panel's side, and the other buttons are blue icons on grey
 
 ### Requirement: Always shown
 The rail SHALL always be shown. There SHALL be no control to collapse it.

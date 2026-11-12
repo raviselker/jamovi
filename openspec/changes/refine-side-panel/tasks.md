@@ -6,7 +6,7 @@ Done on `side-panel-refinements` unless unchecked.
 
 ## 1. Rail and panel
 
-- [x] 1.1 Restyle the rail (blue, white solid icons, active button in the panel's colour) and the panel (greys, radii, shadow, title); verify in the app with each panel open
+- [x] 1.1 Restyle the rail (grey, blue solid icons, active button in the panel's colour with a blue edge) and the panel (greys, radii, shadow, title); verify in the app with each panel open
 - [x] 1.2 Hide the placeholder entries; verify the rail shows only the real entries
 - [x] 1.3 Leave a strip of blue above the rail's first button; verify the active top button no longer meets the ribbon
 - [x] 1.4 Show a filled pin while pinned, labelled "Unpin panel"; verify pinning and unpinning

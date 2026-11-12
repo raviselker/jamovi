@@ -10,7 +10,7 @@ A working implementation exists on the `side-panel-refinements` branch of `ravis
 
 ## What Changes
 
-- **The rail** is jamovi blue with white icons. The active button takes the panel's colour, like the ribbon's selected tab. It is always shown: there is no way to collapse it.
+- **The rail** is the ribbon's light grey with jamovi blue icons. The active button takes the panel's colour with a blue bar on the panel's side, like the ribbon's selected tab. It is always shown: there is no way to collapse it.
 - **The rail's entries:** Analyses, Module Library and Help at the top; the signed-in user's Account and Settings at the bottom. The placeholder entries are hidden.
 - **An Analyses panel** lists every installed module as a row that expands to its analyses. Clicking an analysis runs it. An eye button on each row shows or hides the module in the ribbon. Searching lists the matching analyses from every module.
 - **The Module Library** is for getting modules only: installed module cards no longer list their analyses or have a Hide/Show button. Its cards are restyled with tinted monogram tiles in jamovi's colours.
