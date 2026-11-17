@@ -10,7 +10,7 @@ Server tests run with `docker compose --profile tests run --rm test -c "python3 
 
 - [ ] 2.1 Store the view order and its inverse as index columns in `DataSetW`, with `refreshViewOrder` and `updateViewOrder` covering filtered rows; verify that the existing filter tests still pass and hidden filtered rows still display correctly
 - [ ] 2.2 Add the stable multi-key sort (ordinal by level order, text by label, others by value, missing last, ties in data set order) and `isViewOrderSorted`; verify with tests in `test_view_order.py` for each column type, missing values and multi-key ties
-- [ ] 2.3 Add `ColumnW::searchRows` and `DataSetW::searchRows` (part or whole cell, ignoring ASCII case, decimals as displayed, level labels, missing never matches, all columns except filter and virtual); verify with tests for each of these cases, including one column and whole cell; add `DataSetW::matchRows` ANDing the per-column terms into the main search, with a test that two terms must both match
+- [ ] 2.3 Add `ColumnW::searchRows` and `DataSetW::searchRows` (part or whole cell, ignoring ASCII case, decimals as displayed, a typed number matching a decimal whole at its shown places, level labels, missing never matches, all columns except filter and virtual); verify with tests for each of these cases, including one column and whole cell; add `DataSetW::matchRows` ANDing the per-column terms into the main search, with a test that two terms must both match
 - [ ] 2.4 Make `updateViewOrder` keep edited rows displayed and show appended rows; verify with a test that edits a matching row so it no longer matches and appends a row while searching
 - [ ] 2.5 Expose `refresh_view_order(sort_keys, ex_filtered, search, terms)`, `update_view_order(ex_filtered, search, terms)` and `is_view_order_sorted` in `core.pyx` (UTF-8 text); verify that `test_view_order_store.py` calls them through the Python API
 
@@ -31,10 +31,10 @@ Server tests run with `docker compose --profile tests run --rm test -c "python3 
 ## 5. Client: searching
 
 - [ ] 5.1 Add `search`, `setSearch` (noUndo), `isSearching` and `visibleRowCount` (uses `matches`) to the client `DataSet`; verify that the row count and the grid follow `matches`
-- [ ] 5.2 Build the search field in the bar (glyph, input, ×, "ab" whole-cell toggle, count), with the debounce, Enter, Esc and Ctrl/Cmd+F behaviour; verify each scenario in `specs/data-view-search/spec.md` in the app
+- [ ] 5.2 Build the search field in the bar (the Contains / Is exactly icon, input, ×, count), with the debounce, Enter, Esc and Ctrl/Cmd+F behaviour; verify each scenario in `specs/data-view-search/spec.md` in the app
 - [ ] 5.3 Add the `search` and `searchColumn` actions ("Search in Column" with `menu-search-column.svg` in the context menus) and the ribbon toggle; replace the 250 ms focus timer with a focus hand-over in the interaction manager; verify that Search focuses the field on the first click
-- [ ] 5.4 Build the column search: the toggle with its badge, the row of boxes (aligned on resize, scroll, column changes and row-number width changes; focus kept while typing; cleared when hidden), the header and column tints, and the slide animation with still headers; verify the column search scenarios in the app, including slowed-down animation
-- [ ] 5.5 Add the dimming while a search runs and the match highlighting; drop terms for deleted columns; verify in the app
+- [ ] 5.4 Build the column search: the toggle with its badge, the row of boxes, each with its own Contains / Is exactly icon (aligned on resize, scroll, column changes and row-number width changes; focus kept while typing; cleared when hidden), the header and column tints, and the slide animation with still headers; verify the column search scenarios in the app, including slowed-down animation
+- [ ] 5.5 Add the dimming while a search runs and the match highlighting (whole cells only for Is exactly); drop terms for deleted columns; verify in the app
 
 ## 6. Client: variables view
 

@@ -17,7 +17,6 @@ See proposal.md for the motivation. Specs: `data-view-sort`, `data-view-search`,
 **Non-Goals:**
 - Unicode-aware case folding (only ASCII is lowercased; see Risks).
 - Regular expressions, numeric comparisons ("> 5") or searching for missing values.
-- A separate "Match whole cell" per column search box: the one toggle applies to every search.
 - Searching column names (going to a column by name). It was explored and left for later.
 - Saving the sort or search in `.omv` files.
 - Sorting or searching from the results panel or from analyses.
@@ -32,7 +31,7 @@ The store keeps the view order (data set row per view row) and its inverse as in
 `DataSetModel.invalidate_view_order(rebuild=…)` decides. A change to the sort, the search or the filters (without a data edit) rebuilds. Data edits, a changed row count or a changed sort column only update, so rows don't jump while the user is editing. After an update, `view_order_stale` is true when the rows are no longer in sort order. It is sent to the client as `sort.stale` and shown as Re-sort.
 
 ### Search mask computed in C++
-`ColumnW::searchRows(text, whole, matches)` ORs into a per-row byte mask. Decimals are formatted to the column's `dps`. Text IDs use their raw strings. Level columns test each level label once, then look rows up by value. Missing values never match. With no column ids, `DataSetW::searchRows` searches every column except filter and virtual ones. `DataSetW::matchRows(search…, terms…)` starts from the main search's mask and ANDs in one single-column `searchRows` mask per column term, so a row must match every term. Both view-order functions take the terms and call `matchRows`.
+`ColumnW::searchRows(text, whole, matches)` ORs into a per-row byte mask. Decimals are formatted to the column's `dps`; for a whole-cell match a typed number is formatted the same way, when that doesn't change its value ("2.5" becomes "2.500", "2.5215" stays as typed). Text IDs use their raw strings. Level columns test each level label once, then look rows up by value. Missing values never match. With no column ids, `DataSetW::searchRows` searches every column except filter and virtual ones. `DataSetW::matchRows(search…, terms…)` starts from the main search's mask and ANDs in one single-column `searchRows` mask per column term, so a row must match every term. Both view-order functions take the terms and call `matchRows`.
 *Alternative:* matching in Python was too slow on 1M rows.
 
 ### Search is session state, not data set state
@@ -52,11 +51,12 @@ The store keeps the view order (data set row per view row) and its inverse as in
 - `_layoutFilterRow()` updates boxes in place and only appends new ones: re-inserting a focused input would blur it and the interaction manager would move focus to the grid. It runs after view-range updates, column changes, column resizes and row-header width changes (the row numbers narrowing on a search shifts every column).
 - Opening and closing animates the grid's header track and the header height together (Web Animations, 200 ms, none under `prefers-reduced-motion`). Boxes are focused with `preventScroll`, or the browser scrolls the `overflow: hidden` header and the column headers slide.
 - Closing the row clears its terms, so nothing is searched unseen. Each box debounces 250 ms, applies on Enter and clears on Esc; it stops pointer and context-menu events so the grid doesn't take them.
+- Each box chooses Contains or Is exactly on its own (the server always took a whole-cell flag per term), through its icon: a magnifier, or a blue magnifier with "=" in the lens, each the size of the box's plain magnifier so nothing beside it moves, with a caret. A typed number is compared with a decimal column at its shown places (the cells show 2.500, people type 2.5); it's only rounded when that doesn't change it, so "2.5215" doesn't find 2.522. The icon is a native `<select>` laid over the glyph, so the menu is reachable and announced from the keyboard and takes no width from the box. Tried first: one "ab" toggle for every search, which sat in the main field while also changing the column boxes; then an "ab" per box, which took room from narrow boxes. Data grids with filter rows (DevExpress, AG Grid) likewise put the operator in a button in the cell rather than beside it.
 - The toggle is an icon button (`menu-search-column.svg`, the same as "Search in Column") with a badge counting the columns searched. A box with a term turns yellow, its header gets a matching tint, and that column's cells a faint tint.
 
 ### Search feedback
 - The grid dims (`search-pending`, opacity 0.45) from the first keystroke until the next `cellsChanged` after the search returns (or 300 ms), so the rows changing reads as the result arriving. A later search keeps it dimmed.
-- `_highlightMatches()` wraps the first match in each displayed cell in `<mark>`: a column's own term if it has one, else the main search text.
+- `_highlightMatches()` wraps the first match in each displayed cell in `<mark>`: a column's own term if it has one, else the main search text. With Is exactly it marks only cells that match whole, as the server compares them.
 
 ### Row insert/delete while sorted or searched
 View rows aren't contiguous data set rows then, so insert/delete is disabled on the client and rejected on the server ("You cannot insert/delete rows while the data is sorted or searched"). `_apply_cells` maps view rows to data set rows and recomputes the bottom-most row from the mapped indices.

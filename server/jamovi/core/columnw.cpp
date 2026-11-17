@@ -10,6 +10,7 @@
 #include <set>
 #include <iomanip>
 #include <cmath>
+#include <cstdlib>
 #include <algorithm>
 #include <vector>
 #include <string>
@@ -1056,13 +1057,28 @@ void ColumnW::searchRows(const string &text, bool whole, vector<char> &matches)
     {
         int places = dps();
         char buffer[64];
+
+        // an exact number matches at the shown places, so '2.5' finds 2.500
+        string target = text;
+        if (whole)
+        {
+            char *end;
+            double number = strtod(text.c_str(), &end);
+            if ( ! text.empty() && *end == '\0' && std::isfinite(number))
+            {
+                snprintf(buffer, sizeof(buffer), "%.*f", places, number);
+                if (strtod(buffer, nullptr) == number)  // '2.5215' isn't rounded to 2.522
+                    target = buffer;
+            }
+        }
+
         for (int i = 0; i < n; i++)
         {
             double value = raw<double>(i);
             if (std::isnan(value))
                 continue;
             snprintf(buffer, sizeof(buffer), "%.*f", places, value);
-            if (textMatches(buffer, text, whole))
+            if (textMatches(buffer, target, whole))
                 matches[i] = 1;
         }
     }

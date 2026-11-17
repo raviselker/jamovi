@@ -35,16 +35,27 @@ By default, a row SHALL match when any searchable column contains the text as pa
 - **WHEN** a column shows 1.50 and the user searches for "1.50"
 - **THEN** that row matches
 
-### Requirement: Match whole cell
-The search field SHALL have a "Match whole cell" toggle, off when the bar opens. When on, a row SHALL match only when a searched cell's whole displayed value equals the text, ignoring case.
+### Requirement: Contains or Is exactly
+The main field and each column search box SHALL choose how they match, on their own: "Contains" (part of a cell, the default when the box opens) or "Is exactly" (the cell's whole displayed value equals the text, ignoring case; a number is compared with a decimal column at its shown places). Only matching cells SHALL be highlighted, whole.
 
 #### Scenario: Likert answers
-- **WHEN** "Match whole cell" is on and the user types "1" in Q3's column search box
+- **WHEN** the user types "1" in Q3's column search box and chooses "Is exactly" from its icon
 - **THEN** rows where Q3 is 1 match, and rows where Q3 is 10 or 11 do not
 
-#### Scenario: One toggle for every search
-- **WHEN** "Match whole cell" is on
-- **THEN** it applies to the main field and to every column search box
+#### Scenario: Decimals
+- **WHEN** the user types "2.5" in the main field and chooses "Is exactly", in data with three decimal places
+- **THEN** rows with a 2.500 in any column are displayed, with those cells highlighted, and rows whose only near value is 2.521 are not; "2.52" matches nothing
+
+#### Scenario: Whole cell in one column only
+- **WHEN** Group's box has "control" set to "Is exactly", and Name's box has "smi" set to "Contains"
+- **THEN** rows where Group is exactly "control" and Name contains "smi" are displayed
+
+### Requirement: Match icon
+Each box's icon SHALL show and change how it matches: a magnifier for Contains, a blue magnifier with "=" in its lens for Is exactly, both with a caret and the same size, so nothing in the box moves. Clicking it SHALL open a menu of the two.
+
+#### Scenario: Changing a box to exact
+- **WHEN** the user clicks the magnifier in Neuroticism's box and chooses "Is exactly"
+- **THEN** the icon shows "=" in its lens, the clear button stays where it was, and the box matches whole cells
 
 ### Requirement: Column search
 The main field SHALL search all columns. A toggle button beside it, with a badge counting the columns searched, SHALL show or hide a row with a search box under each column header. Each box SHALL search only its column, and a row SHALL be displayed only when it matches the main field (if it has text) and every box with text. Hiding the row SHALL clear its boxes. The user interface SHALL call this "Column search", never "filter", so it is not confused with the data filters.
@@ -54,7 +65,7 @@ The main field SHALL search all columns. A toggle button beside it, with a badge
 - **THEN** only rows where Group contains "control" and Q3 contains "1" are displayed, and the badge shows 2
 
 #### Scenario: Lookup
-- **WHEN** the user types "10" in Subject's box and "2" in Session's box, with "Match whole cell" on
+- **WHEN** the user types "10" in Subject's box and "2" in Session's box, each set to "Is exactly"
 - **THEN** only subject 10's session 2 row is displayed
 
 #### Scenario: Search in Column

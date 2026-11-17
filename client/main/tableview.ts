@@ -80,9 +80,11 @@ class TableView extends HTMLElement implements DataSetView {
     _filterRowHeight = 28;  // taller than a data row, so the boxes are comfortable to type in
     _filtersShown = false;  // a box under each column header, for a term per column
     _terms = new Map<number, string>();  // column id to its term, as typed
+    _termsWhole = new Set<number>();  // the column ids whose term matches the whole cell
     _searchRequest: number;
     _searchOpen = false;
     _searchWhole = false;
+    _setSearchMode!: (whole: boolean) => void;
     _searchTimer: ReturnType<typeof setTimeout>;
     _sortBarMoved: number;
     _sortBarAnimation: Animation;
@@ -605,8 +607,14 @@ class TableView extends HTMLElement implements DataSetView {
 
     _createSearch() {
         this.$searchInput = h('input', { class: 'jmv-sort-bar-search-input jmv-search-field-input', 'aria-label': _('Search the data'), spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
-        this.$searchWhole = h('button', { class: 'jmv-sort-bar-search-whole', title: _('Match whole cell'), 'aria-pressed': 'false' }, 'ab');
-        this.$searchClear = h('button', { class: 'jmv-sort-bar-search-clear jmv-search-field-clear', title: _('Clear the search'), 'aria-label': _('Clear the search') }, '\u00D7');
+        let mode = this._createMatchMode(false, (whole) => {
+            this._searchWhole = whole;
+            this._applySearch();
+            this.$searchInput.focus();
+        });
+        this.$searchWhole = mode.$mode;
+        this._setSearchMode = mode.set;
+        this.$searchClear = h('button', { class: 'jmv-sort-bar-search-clear jmv-search-field-clear', title: _('Clear the search'), 'aria-label': _('Clear the search') });
         this.$searchCount = h('span', { class: 'jmv-sort-bar-search-count jmv-search-count', 'aria-live': 'polite' });
         this.$sortItems = h('div', { class: 'jmv-sort-bar-sort' });
 
@@ -617,8 +625,7 @@ class TableView extends HTMLElement implements DataSetView {
         });
 
         let $search = h('div', { class: 'jmv-sort-bar-search jmv-search-field' },
-            h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }),
-            this.$searchInput, this.$searchClear, this.$searchWhole);
+            this.$searchWhole, this.$searchInput, this.$searchClear);
         $search.addEventListener('click', () => this.$searchInput.focus());
         this.$columnSearchButton = h('button', { class: 'jmv-column-search-button', title: _('Search each column separately'), 'aria-label': _('Column search'), 'aria-pressed': 'false' },
             h('span', { class: 'jmv-column-search-icon', 'aria-hidden': 'true' }),
@@ -661,12 +668,6 @@ class TableView extends HTMLElement implements DataSetView {
             this._applySearch();
             this.$searchInput.focus();
         });
-        this.$searchWhole.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this._searchWhole = ! this._searchWhole;
-            this._applySearch();
-            this.$searchInput.focus();
-        });
 
         // searching one column is its box beneath the header
         this.controller.on('openSearch', (columnIds?: number[]) => columnIds?.length ? this.openColumnFilter(columnIds[0]) : this.openSearch());
@@ -683,8 +684,10 @@ class TableView extends HTMLElement implements DataSetView {
                 this._searchWhole = search.whole;
             // a column deleted takes its term with it
             for (let columnId of [ ...this._terms.keys() ])
-                if ( ! this.model.getColumnById(columnId))
+                if ( ! this.model.getColumnById(columnId)) {
                     this._terms.delete(columnId);
+                    this._termsWhole.delete(columnId);
+                }
             if (document.activeElement !== this.$searchInput)
                 this.$searchInput.value = search.text;
             this._updateSearch();
@@ -741,7 +744,7 @@ class TableView extends HTMLElement implements DataSetView {
         this._updateSearch();
         let text = this.$searchInput.value;
         let current = this.model.attributes.search;
-        let terms = [ ...this._terms ].filter(([ , term ]) => term !== '').map(([ columnId, term ]) => ({ columnId, text: term, whole: this._searchWhole }));  // 'ab' applies to every search
+        let terms = [ ...this._terms ].filter(([ , term ]) => term !== '').map(([ columnId, term ]) => ({ columnId, text: term, whole: this._termsWhole.has(columnId) }));  // each box has its own 'ab'
         if (text === '' && current.text === '' && terms.length === 0 && (current.terms ?? [ ]).length === 0) {
             this.classList.remove('search-pending');
             return;
@@ -772,17 +775,25 @@ class TableView extends HTMLElement implements DataSetView {
                 continue;
             let term = terms.get(parseInt($column.dataset.id));
             let text = (term ? term.text : search.text).toLowerCase();
+            let whole = term ? term.whole : search?.whole;
             for (let cell of $column.children as HTMLCollectionOf<HTMLElement>) {
                 if ( ! cell.classList.contains('jmv-column-cell') || cell.dataset.type === 'bool')
                     continue;
                 let value = cell.textContent;
                 let at = text === '' ? -1 : value.toLowerCase().indexOf(text);
+                let length = text.length;
+                if (whole && text !== '') {
+                    // as the server matches: the whole cell, and a decimal at its shown places ('2.5' is 2.500)
+                    let equal = value.toLowerCase() === text || (cell.dataset.type === 'number' && value.includes('.') && text.trim() !== '' && Number(text) === Number(value));
+                    at = equal ? 0 : -1;
+                    length = value.length;
+                }
                 if (at === -1) {
                     if (cell.firstElementChild?.tagName === 'MARK' || cell.querySelector('mark'))
                         cell.textContent = value;
                     continue;
                 }
-                cell.replaceChildren(value.slice(0, at), h('mark', { }, value.slice(at, at + text.length)), value.slice(at + text.length));
+                cell.replaceChildren(value.slice(0, at), h('mark', { }, value.slice(at, at + length)), value.slice(at + length));
             }
         }
     }
@@ -838,7 +849,7 @@ class TableView extends HTMLElement implements DataSetView {
         let nTerms = [ ...this._terms.values() ].filter(term => term !== '').length;
         this.$columnSearchButton.setAttribute('aria-pressed', this._filtersShown ? 'true' : 'false');
         this.$columnSearchButton.querySelector('.jmv-column-search-badge').textContent = nTerms > 0 ? String(nTerms) : '';
-        this.$searchWhole.setAttribute('aria-pressed', this._searchWhole ? 'true' : 'false');
+        this._setSearchMode(this._searchWhole);
         this.$searchClear.style.visibility = this.$searchInput.value !== '' ? '' : 'hidden';
 
         let search = this.model.attributes.search;
@@ -3251,6 +3262,7 @@ class TableView extends HTMLElement implements DataSetView {
         if ( ! shown && this._terms.size > 0) {
             // hidden terms would search unseen
             this._terms.clear();
+            this._termsWhole.clear();
             for (let $input of this.$filterRow.querySelectorAll('input'))
                 $input.value = '';
             this._applySearch();
@@ -3309,10 +3321,43 @@ class TableView extends HTMLElement implements DataSetView {
             $gone.remove();
     }
 
+    _createMatchMode(whole: boolean, onChange: (whole: boolean) => void): { $mode: HTMLElement, set: (whole: boolean) => void } {
+        // a box's icon picks how it matches: the magnifier for part of a cell, '=' for the whole cell;
+        // a native select laid over it is the menu, so it's reachable and announced from the keyboard
+        let $select = h('select', { class: 'jmv-search-mode-select', title: _('How the search matches'), 'aria-label': _('How the search matches') },
+            h('option', { value: 'part' }, _('Contains')),
+            h('option', { value: 'whole' }, _('Is exactly'))) as HTMLSelectElement;
+        let $mode = h('span', { class: 'jmv-search-mode' },
+            h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }),
+            h('span', { class: 'jmv-search-mode-equals', 'aria-hidden': 'true' }),
+            h('span', { class: 'jmv-search-mode-caret', 'aria-hidden': 'true' }),
+            $select);
+        let set = (whole: boolean) => {
+            $select.value = whole ? 'whole' : 'part';
+            $mode.classList.toggle('whole', whole);
+        };
+        set(whole);
+        $select.addEventListener('change', () => {
+            set($select.value === 'whole');
+            onChange($select.value === 'whole');
+        });
+        $select.addEventListener('click', event => event.stopPropagation());  // not the field's, which focuses the input
+        $select.addEventListener('keydown', event => event.stopPropagation());  // not typing into a cell
+        return { $mode, set };
+    }
+
     _createFilterBox(columnId: number): HTMLElement {
         let $input = h('input', { class: 'jmv-filter-box jmv-search-field-input', 'data-id': String(columnId), spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
-        let $clear = h('button', { class: 'jmv-search-field-clear', title: _('Clear'), 'aria-label': _('Clear'), tabindex: '-1' }, '\u00D7');
-        let $field = h('div', { class: 'jmv-filter-field' }, h('span', { class: 'jmv-search-field-glyph', 'aria-hidden': 'true' }), $input, $clear);
+        let $clear = h('button', { class: 'jmv-search-field-clear', title: _('Clear'), 'aria-label': _('Clear'), tabindex: '-1' });
+        let $mode = this._createMatchMode(this._termsWhole.has(columnId), (whole) => {
+            if (whole)
+                this._termsWhole.add(columnId);
+            else
+                this._termsWhole.delete(columnId);
+            apply();
+            $input.focus({ preventScroll: true });
+        }).$mode;
+        let $field = h('div', { class: 'jmv-filter-field' }, $mode, $input, $clear);
         let $cell = h('div', { class: 'jmv-filter-cell', 'data-id': String(columnId) }, $field);
         $input.value = this._terms.get(columnId) ?? '';
         let timer: ReturnType<typeof setTimeout>;
