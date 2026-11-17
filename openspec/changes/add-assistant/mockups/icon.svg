@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+  <!-- a speech bubble with a large and a small sparkle cut out of it -->
+  <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-4.5 3.5V18H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z
+           M10.5 7.3Q11.256 10.744 14.7 11.5Q11.256 12.256 10.5 15.7Q9.744 12.256 6.3 11.5Q9.744 10.744 10.5 7.3z
+           M16.2 5.4Q16.596 7.204 18.4 7.6Q16.596 7.996 16.2 9.8Q15.804 7.996 14 7.6Q15.804 7.204 16.2 5.4z"/>
+</svg>

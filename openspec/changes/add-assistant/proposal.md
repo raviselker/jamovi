@@ -10,7 +10,7 @@ This change specifies the assistant's panel and behaviour. It is not scheduled f
 
 ## What Changes
 
-- **An Assistant entry** at the top of the side panel's rail (a sparkle), opening a chat panel.
+- **An Assistant entry** at the top of the side panel's rail (a speech bubble with two sparkles), opening a chat panel.
 - **Context:** the assistant sees the open data set and the selected analysis, shown as chips above the message box; more (other analyses, variables, results) can be added.
 - **Three modes**, picked under the message box: **Ask** (answers, changes nothing), **Plan** (proposes steps to review), **Agent** (makes the changes).
 - **References:** analyses, variables and results in its answers are chips that go to them.

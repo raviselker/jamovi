@@ -7,7 +7,7 @@ An assistant in the side panel that can see the open file, and answer questions 
 ## ADDED Requirements
 
 ### Requirement: Assistant entry
-The rail SHALL have an Assistant entry, a sparkle, above the other entries, opening a chat panel. The chat panel SHALL open wider than the other panels. An empty chat SHALL offer suggestions that fit the open file.
+The rail SHALL have an Assistant entry, a solid speech bubble with two sparkles cut out of it (a large one and a small one), above the other entries, opening a chat panel. The chat panel SHALL open wider than the other panels. An empty chat SHALL offer suggestions that fit the open file.
 
 #### Scenario: A file with an analysis
 - **WHEN** the user opens the Assistant with Tooth Growth and an ANOVA open

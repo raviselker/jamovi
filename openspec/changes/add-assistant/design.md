@@ -34,6 +34,12 @@ The assistant's text and numbers in the mockups are illustrative.
 
 ## Decisions
 
+### The icon: a speech bubble with two sparkles
+`mockups/icon.svg`: a solid speech bubble, like the rail's other solid icons, with a large and a small sparkle cut out of it. The bubble says it's a conversation, the sparkles that it's AI. Considered and dropped:
+- **A sparkle alone** (as in the other mockups): too close to Gemini's and Google's marks.
+- **One sparkle in the bubble:** at 24px it reads as a plus. The pair doesn't.
+- **jamovi-themed** (the logo's V in a bubble, a bell curve, a results table): the V reads as a logo more than a tool, and the table lines as an ordinary message.
+
 ### Modes like Copilot's
 Ask, Plan and Agent cover the three ways people want help: to understand, to decide, and to get it done. One picker under the message box, rather than three entries, keeps one conversation across them (a plan can be handed to Agent).
 

@@ -4,7 +4,7 @@ Not scheduled. Settle the open questions in design.md first.
 
 ## 1. Panel
 
-- [ ] 1.1 Add the Assistant entry at the top of the rail, opening wider than other panels; verify against `mockups/chat-empty.png`
+- [ ] 1.1 Add the Assistant entry at the top of the rail, opening wider than other panels; verify the icon against `mockups/icon.svg` and the panel against `mockups/chat-empty.png`
 - [ ] 1.2 Add the message box with context chips, the mode picker and Send / Stop; verify against `mockups/chat-menu.png`
 - [ ] 1.3 Add new chat and history to the panel's header, with the shared search box; verify against `mockups/chat-history.png`
 
