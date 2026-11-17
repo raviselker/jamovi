@@ -69,6 +69,7 @@ View rows aren't contiguous data set rows then, so insert/delete is disabled on 
 - [Large wide data] Searching all columns of 50k × 500 takes about 0.5 s. → The 250 ms debounce keeps it from running per keystroke. Searching could run off the request thread later if needed.
 - [Many columns] Every column gets a box, not only those in view (`shortcut:` comment). → Fine to a few hundred columns; virtualise the boxes with the columns past that.
 - [Tab into an off-screen box] Focusing a box beyond the visible columns may scroll the header sideways out of line with the grid. → Untested; scroll the grid to the box on focus instead.
+- [Losing your place] A search scrolls to the top, and so does clearing it, so the user doesn't return to the row they were on. The selection is kept by view position, so during a search it can sit below the results, out of view, and after clearing it's on its old row but scrolled away from. → Later: move the selection to the first result when searching, and on clearing scroll back to the data set row that was selected.
 - [Untested combinations] The prototype didn't test search with filters, or copy/paste of a sorted or searched selection. → Covered by tasks 4.4 and 6.2.
 
 ## Migration Plan

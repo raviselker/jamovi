@@ -755,6 +755,7 @@ class TableView extends HTMLElement implements DataSetView {
         this.classList.add('search-pending');
         try {
             await this.model.setSearch({ text, columnIds: [ ], whole: this._searchWhole, terms });
+            this.$container.scrollTop = 0;  // the results start at the top; scrolled far down, they'd be out of view
             await this._nextCells();
         }
         catch (error) {

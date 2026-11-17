@@ -7,11 +7,19 @@ Lets users find data quickly by hiding the data view rows that do not contain a 
 ## ADDED Requirements
 
 ### Requirement: Search hides non-matching rows
-While a search is active, the data view SHALL display only the rows that match it, in the current sort order. Hidden rows SHALL remain in the data set, and analyses, filters and the saved file SHALL be unaffected.
+While a search is active, the data view SHALL display only the rows that match it, in the current sort order. Hidden rows SHALL remain in the data set, and analyses, filters and the saved file SHALL be unaffected. Changing the search SHALL scroll the data view to its first row.
 
 #### Scenario: Matching rows only
 - **WHEN** the user searches for "control" in a data set where 12 of 40 rows contain "Control"
 - **THEN** only those 12 rows are displayed, with their data set row numbers
+
+#### Scenario: Searching while scrolled down
+- **WHEN** the user has scrolled to row 450 of 500 and searches for text found in 16 rows
+- **THEN** the data view scrolls to the top and the 16 rows are in view, not the empty rows below them
+
+#### Scenario: Clearing the search
+- **WHEN** the user clears the search
+- **THEN** the data view scrolls to the top of all the rows, not back to where the user was before searching
 
 #### Scenario: Analyses unaffected
 - **WHEN** a search is active
