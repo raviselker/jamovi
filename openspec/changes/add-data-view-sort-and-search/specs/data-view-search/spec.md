@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets users find data quickly by hiding the data view rows that do not contain a piece of text, across all columns or per column, without changing the data set, analyses or undo history.
+Lets users find data quickly by hiding the data view rows that do not contain a piece of text, across all columns or per column, without changing the data set, analyses or undo history. Search is for exploring the data, and filters are for analysing a subset of it: a filter changes the rows the analyses use, a search only changes the rows the user sees.
 
 ## ADDED Requirements
 
