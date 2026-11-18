@@ -3383,7 +3383,8 @@ class TableView extends HTMLElement implements DataSetView {
             h('span', { class: 'jmv-filter-levels-icon', 'aria-hidden': 'true' }),
             h('span', { class: 'jmv-filter-levels-text' }),
             h('span', { class: 'jmv-filter-levels-more' }));
-        let $cell = h('div', { class: 'jmv-filter-cell', 'data-id': String(columnId), 'data-kind': 'levels' }, h('div', { class: 'jmv-filter-field' }, $pick));
+        let $field = h('div', { class: 'jmv-filter-field' }, $pick);
+        let $cell = h('div', { class: 'jmv-filter-cell', 'data-id': String(columnId), 'data-kind': 'levels' }, $field);
         let toggle = () => {
             if (dropdown.isVisible() === true && dropdown.focusedOn() === $pick)
                 dropdown.hide();
@@ -3391,8 +3392,9 @@ class TableView extends HTMLElement implements DataSetView {
                 dropdown.show($pick, this._createLevelList(columnId, $cell));
         };
         // on press, not click: pressing moves focus out of an open list, which closes it,
-        // and the click would then open it again (as the sort bar's variable list does)
-        $pick.addEventListener('mousedown', (event) => {
+        // and the click would then open it again (as the sort bar's variable list does);
+        // on the whole box, so its padding and border count too
+        $field.addEventListener('mousedown', (event) => {
             event.preventDefault();
             toggle();
         });
