@@ -46,17 +46,17 @@ By default, a row SHALL match when any searchable column contains the text as pa
 ### Requirement: Contains or Is exactly
 The main field and each column search box SHALL choose how they match, on their own: "Contains" (part of a cell, the default when the box opens) or "Is exactly" (the cell's whole displayed value equals the text, ignoring case; a number is compared with a decimal column at its shown places). Only matching cells SHALL be highlighted, whole.
 
-#### Scenario: Likert answers
-- **WHEN** the user types "1" in Q3's column search box and chooses "Is exactly" from its icon
-- **THEN** rows where Q3 is 1 match, and rows where Q3 is 10 or 11 do not
+#### Scenario: Scores
+- **WHEN** the user types "1" in the box of Score, a continuous column, and chooses "Is exactly" from its icon
+- **THEN** rows where Score is 1 match, and rows where Score is 10 or 11 do not
 
 #### Scenario: Decimals
 - **WHEN** the user types "2.5" in the main field and chooses "Is exactly", in data with three decimal places
 - **THEN** rows with a 2.500 in any column are displayed, with those cells highlighted, and rows whose only near value is 2.521 are not; "2.52" matches nothing
 
 #### Scenario: Whole cell in one column only
-- **WHEN** Group's box has "control" set to "Is exactly", and Name's box has "smi" set to "Contains"
-- **THEN** rows where Group is exactly "control" and Name contains "smi" are displayed
+- **WHEN** Name's box has "ann" set to "Is exactly", and Notes' box has "late" set to "Contains"
+- **THEN** rows where Name is exactly "Ann" and Notes contains "late" are displayed
 
 ### Requirement: Match icon
 Each box's icon SHALL show and change how it matches: a magnifier for Contains, a blue magnifier with "=" in its lens for Is exactly, both with a caret and the same size, so nothing in the box moves. Clicking it SHALL open a menu of the two.
@@ -66,19 +66,19 @@ Each box's icon SHALL show and change how it matches: a magnifier for Contains, 
 - **THEN** the icon shows "=" in its lens, the clear button stays where it was, and the box matches whole cells
 
 ### Requirement: Column search
-The main field SHALL search all columns. A toggle button beside it, with a badge counting the columns searched, SHALL show or hide a row with a search box under each column header. Each box SHALL search only its column, and a row SHALL be displayed only when it matches the main field (if it has text) and every box with text. Hiding the row SHALL clear its boxes. The user interface SHALL call this "Column search", never "filter", so it is not confused with the data filters.
+The main field SHALL search all columns. A toggle button beside it, with a badge counting the columns searched, SHALL show or hide a row with a search box under each column header. Each box SHALL search only its column, and a row SHALL be displayed only when it matches the main field (if it has text) and every box in use. Hiding the row SHALL clear its boxes. The user interface SHALL call this "Column search", never "filter", so it is not confused with the data filters.
 
 #### Scenario: Subgroup
-- **WHEN** the user types "control" in Group's box and "1" in Q3's box
-- **THEN** only rows where Group contains "control" and Q3 contains "1" are displayed, and the badge shows 2
+- **WHEN** the user ticks only "control" in Group's level list and types "1" in Score's box set to "Is exactly"
+- **THEN** only rows where Group is "control" and Score is 1 are displayed, and the badge shows 2
 
 #### Scenario: Lookup
-- **WHEN** the user types "10" in Subject's box and "2" in Session's box, each set to "Is exactly"
+- **WHEN** the user types "10" in Subject's box and "2" in Session's box, both continuous columns, each set to "Is exactly"
 - **THEN** only subject 10's session 2 row is displayed
 
 #### Scenario: Search in Column
-- **WHEN** the user right-clicks column Q3 and chooses "Search in Column"
-- **THEN** the bar and the column search row open with Q3's box focused
+- **WHEN** the user right-clicks column Score and chooses "Search in Column"
+- **THEN** the bar and the column search row open with Score's box focused
 
 #### Scenario: Hiding the row
 - **WHEN** boxes have text and the user turns column search off
@@ -88,6 +88,44 @@ The main field SHALL search all columns. A toggle button beside it, with a badge
 - **WHEN** a column with text in its box is deleted
 - **THEN** its term is dropped and the other searches stay
 
+### Requirement: Picking levels
+A nominal or ordinal column's box SHALL be a list of the column's levels to tick, in place of a text box; one with no levels yet SHALL keep the text box. The list SHALL show each level, in the column's level order, and a "(Missing)" entry below them, each with its number of rows matching every other search (not the column's own); a level at 0 is greyed but can be ticked. Every entry SHALL start ticked, and the rows SHALL update with each tick.
+
+#### Scenario: Two regions
+- **WHEN** the user opens Region's box, clears it, and ticks Europe and Other
+- **THEN** only rows from Europe or Other are displayed, and the box reads "Europe +1"
+
+#### Scenario: Only the blanks
+- **WHEN** the user unticks every level of Gender but leaves "(Missing)" ticked
+- **THEN** only rows with no Gender are displayed
+
+#### Scenario: Counts within the other searches
+- **WHEN** Region's list has only Europe ticked and the user opens Gender's list
+- **THEN** Female and Male show their counts among the European rows, and Region's own list still shows every region's count
+
+#### Scenario: A new column
+- **WHEN** a new, empty nominal column is added while column search is open
+- **THEN** its box is a text box, and becomes a level list once it has levels
+
+#### Scenario: Male is not female
+- **WHEN** the user ticks only "Male" in Gender's box
+- **THEN** rows where Gender is "Female" are not displayed
+
+### Requirement: Level list controls
+Clicking the box SHALL open the list, and clicking it again SHALL close it. A field at the top of the list SHALL narrow it to the levels containing its text, with "Select all" (or "Select these N" while narrowed) and "Clear" below. The box SHALL read "All" while everything is ticked, the first ticked level and "+N" for the rest otherwise (all of them in its tooltip), and "None" with nothing ticked.
+
+#### Scenario: Clicking the box again
+- **WHEN** Region's list is open and the user clicks Region's box
+- **THEN** the list closes
+
+#### Scenario: Many levels
+- **WHEN** a Country column has 64 levels and the user types "an" in its list's field
+- **THEN** the list shows only the levels containing "an", and "Select these 5" ticks just those
+
+#### Scenario: Nothing ticked
+- **WHEN** the user clicks "Clear" in Region's list
+- **THEN** the box reads "None" and no rows are displayed
+
 ### Requirement: Column search layout
 Each box SHALL stay aligned with its column when columns are resized, added or removed, when the data view scrolls, and when the row number column changes width. A box with text SHALL be highlighted and its column header tinted. The row SHALL slide open and closed without the column headers moving, and without motion when the system asks for reduced motion. Typing in a box SHALL keep focus in it while the results update.
 
@@ -96,7 +134,7 @@ Each box SHALL stay aligned with its column when columns are resized, added or r
 - **THEN** the boxes stay aligned with their columns
 
 #### Scenario: Focus kept
-- **WHEN** the user types in Group's box and the matching rows change
+- **WHEN** the user types in Name's box and the matching rows change
 - **THEN** the box keeps the focus and the caret
 
 ### Requirement: Opening and closing the search

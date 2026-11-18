@@ -146,7 +146,9 @@ export interface ViewSearch {
 export interface SearchTerm {
     columnId: number,
     text: string,
-    whole: boolean
+    whole: boolean,
+    labels?: string[],  // a level list: the ticked levels' labels
+    missing?: boolean  // and whether rows with no value match
 }
 
 export interface Viewport {
@@ -362,7 +364,9 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
     }
 
     _readSearchPB(searchPB: any): ViewSearch {
-        let terms = (searchPB?.terms ?? [ ]).map(term => ({ columnId: term.columnId, text: term.text, whole: term.whole }));
+        let terms = (searchPB?.terms ?? [ ]).map(term => term.levels
+            ? { columnId: term.columnId, text: term.text, whole: term.whole, labels: [ ...term.labels ], missing: term.missing }
+            : { columnId: term.columnId, text: term.text, whole: term.whole });
         let matches = searchPB?.matches ?? 0;
         if ( ! searchPB || ! searchPB.text)
             return { text: '', columnIds: [ ], whole: false, matches, terms };
@@ -375,6 +379,27 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
                 && current.columnIds.length === search.columnIds.length && current.columnIds.every((id, i) => id === search.columnIds[i]))
             return;
         this.set('search', search);
+    }
+
+    countLevels(columnId: number): Promise<{ counts: number[], missing: number }> {
+        // a level column's counts within every search but its own
+        let coms = this.attributes.coms!;
+        let datasetPB = new coms.Messages.DataSetRR();
+        datasetPB.op = coms.Messages.GetSet.GET;
+        datasetPB.schema = new coms.Messages.DataSetSchema();
+        datasetPB.schema.search = new coms.Messages.DataSetSchema.ViewSearch();
+        datasetPB.schema.search.countLevels = true;
+        datasetPB.schema.search.countColumnId = columnId;
+
+        let request = new coms.Messages.ComsMessage();
+        request.payload = datasetPB.toArrayBuffer();
+        request.payloadType = 'DataSetRR';
+        request.instanceId = this.attributes.instanceId;
+
+        return coms.send(request).then(response => {
+            let search = coms.Messages.DataSetRR.decode(response.payload).schema?.search;
+            return { counts: [ ...(search?.levelCounts ?? [ ]) ], missing: search?.missingCount ?? 0 };
+        });
     }
 
     setSearch(search: ViewSearch) {
@@ -395,6 +420,11 @@ class DataSetModel<M extends DataSetModelData> extends EventMap<M> {
             termPB.columnId = term.columnId;
             termPB.text = term.text;
             termPB.whole = term.whole;
+            if (term.labels) {
+                termPB.levels = true;
+                termPB.labels = term.labels;
+                termPB.missing = term.missing ?? false;
+            }
             return termPB;
         });
 

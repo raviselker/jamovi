@@ -624,8 +624,18 @@ message DataSetSchema {
             int32 columnId = 1;
             string text = 2;
             bool whole = 3;
+            bool levels = 4;  // a level list: matches the rows with one of labels
+            repeated string labels = 5;
+            bool missing = 6;  // and the rows with no value
         }
         repeated Term terms = 5;  // per column; a row must match every one
+
+        // a GET with countLevels asks for countColumnId's level counts within
+        // every search but its own: one per level, in level order
+        bool countLevels = 6;
+        int32 countColumnId = 7;
+        repeated uint32 levelCounts = 8;
+        uint32 missingCount = 9;
     }
 
     // the rows displayed are those matching. in a request, present only

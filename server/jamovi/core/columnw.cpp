@@ -1117,3 +1117,55 @@ void ColumnW::_discardScratchColumn()
     DataSetW *ds = (DataSetW*)_parent;
     ds->discardScratchColumn(id());
 }
+
+void ColumnW::pickRows(const vector<string> &labels, bool missing, vector<char> &matches)
+{
+    // marks the rows whose level is one of labels, and those with no value
+    // when missing is set
+
+    set<string> picked(labels.begin(), labels.end());
+    ColumnStruct *s = struc();
+    Level *levels = _mm->resolve(s->levels);
+    set<int> values;
+    for (int i = 0; i < s->levelsUsed; i++)
+        if (picked.count(_mm->resolve(levels[i].label)))
+            values.insert(levels[i].value);
+
+    int n = std::min(rowCount(), (int)matches.size());
+    for (int i = 0; i < n; i++)
+    {
+        int value = raw<int>(i);
+        if (value == INT_MIN ? missing : values.count(value) > 0)
+            matches[i] = 1;
+    }
+}
+
+vector<int> ColumnW::countLevels(const vector<char> &include)
+{
+    // each level's number of included rows, in level order, then the
+    // included rows with no value
+
+    ColumnStruct *s = struc();
+    Level *levels = _mm->resolve(s->levels);
+    map<int, int> index;
+    for (int i = 0; i < s->levelsUsed; i++)
+        index[levels[i].value] = i;
+
+    vector<int> counts(s->levelsUsed + 1, 0);
+    int n = std::min(rowCount(), (int)include.size());
+    for (int i = 0; i < n; i++)
+    {
+        if ( ! include[i])
+            continue;
+        int value = raw<int>(i);
+        if (value == INT_MIN)
+            counts[s->levelsUsed]++;
+        else
+        {
+            auto found = index.find(value);
+            if (found != index.end())
+                counts[found->second]++;
+        }
+    }
+    return counts;
+}

@@ -186,3 +186,50 @@ def test_search_terms_must_all_match(dataset: DataSet):
     assert dataset.get_data_indices(0, dataset.view_row_count) == []
     dataset.refresh_view_order([], False, None, [(c, "anne", True)])
     assert dataset.get_data_indices(0, dataset.view_row_count) == [2, 4]
+
+
+def test_level_terms_match_ticked_levels(dataset: DataSet):
+    """GIVEN a level column
+    WHEN only some of its levels are ticked
+    THEN only rows with those levels are displayed, and nothing when none are"""
+    b = dataset["B"].id
+    dataset.refresh_view_order([], False, None, [(b, "", False, ["a", "c"], False)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == [1, 2, 4]
+    dataset.refresh_view_order([], False, None, [(b, "", False, [], False)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == []
+
+
+def test_level_terms_match_missing_when_ticked(dataset: DataSet):
+    """GIVEN a level column with a missing value
+    WHEN only (Missing) is ticked
+    THEN only the row with no value is displayed"""
+    b = dataset["B"].id
+    dataset["B"].clear_at(3)
+    dataset.refresh_view_order([], False, None, [(b, "", False, [], True)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == [3]
+    dataset.refresh_view_order([], False, None, [(b, "", False, ["b"], True)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == [0, 3]
+
+
+def test_level_terms_combine_with_text_terms(dataset: DataSet):
+    """GIVEN a level term and a text term
+    WHEN searching with both
+    THEN a row must match each"""
+    b, c = dataset["B"].id, dataset["C"].id
+    dataset.refresh_view_order([], False, None, [(b, "", False, ["a"], False), (c, "anne", True)])
+    assert dataset.get_data_indices(0, dataset.view_row_count) == [2, 4]
+
+
+def test_level_counts_within_searches(dataset: DataSet):
+    """GIVEN a search in another column
+    WHEN counting a level column
+    THEN each level counts only the rows matching that search, then the blanks"""
+    a, b, c = dataset["A"].id, dataset["B"].id, dataset["C"].id
+    levels = [level[1] for level in dataset["B"].levels]
+    counts = dataset.count_levels(b, False, None, [(c, "anne", True)])
+    assert dict(zip(levels, counts)) == {"a": 2, "b": 0, "c": 0}
+    assert counts[-1] == 0
+    dataset["B"].clear_at(3)
+    counts = dataset.count_levels(b, False, ("1.5", [a], False))
+    assert dict(zip(levels, counts)) == {"a": 1, "b": 0, "c": 1}
+    assert dataset.count_levels(b, False)[-1] == 1

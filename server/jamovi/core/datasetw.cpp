@@ -482,7 +482,21 @@ vector<char> DataSetW::searchRows(const string &search, const vector<int> &colum
     return matches;
 }
 
-vector<char> DataSetW::matchRows(const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole)
+vector<int> DataSetW::countLevels(int columnId, bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole, const vector<bool> &termPick, const vector<vector<string>> &termLabels, const vector<bool> &termMissing)
+{
+    // each level's number of rows matching the search and terms given (the
+    // caller leaves out the column's own), in level order, then the rows
+    // with no value
+
+    vector<char> matches = matchRows(search, searchColumnIds, searchWhole, termIds, termTexts, termWhole, termPick, termLabels, termMissing);
+    int nRows = rowCount();
+    vector<char> include(nRows, 1);
+    for (int rowNo = 0; rowNo < nRows; rowNo++)
+        include[rowNo] = ! (exFiltered && isRowFiltered(rowNo)) && (matches.empty() || matches[rowNo]);
+    return getColumnById(columnId).countLevels(include);
+}
+
+vector<char> DataSetW::matchRows(const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole, const vector<bool> &termPick, const vector<vector<string>> &termLabels, const vector<bool> &termMissing)
 {
     // the search, and each column's term: a row must match them all.
     // empty when there's nothing to match
@@ -491,9 +505,19 @@ vector<char> DataSetW::matchRows(const string &search, const vector<int> &search
 
     for (size_t i = 0; i < termIds.size(); i++)
     {
-        vector<char> term = searchRows(termTexts[i], { termIds[i] }, termWhole[i]);
-        if (term.empty())
-            continue;
+        vector<char> term;
+        if (termPick[i])
+        {
+            // a level list: the ticked levels, even none (which matches nothing)
+            term.assign(rowCount(), 0);
+            getColumnById(termIds[i]).pickRows(termLabels[i], termMissing[i], term);
+        }
+        else
+        {
+            term = searchRows(termTexts[i], { termIds[i] }, termWhole[i]);
+            if (term.empty())
+                continue;
+        }
         if (matches.empty())
             matches = move(term);
         else
@@ -504,7 +528,7 @@ vector<char> DataSetW::matchRows(const string &search, const vector<int> &search
     return matches;
 }
 
-bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool> &descending, bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole)
+bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool> &descending, bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole, const vector<bool> &termPick, const vector<vector<string>> &termLabels, const vector<bool> &termMissing)
 {
     // the view order is the data set rows displayed, in the order they're
     // displayed; exFiltered omits filtered rows. ties retain the data set
@@ -512,7 +536,7 @@ bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool>
 
     int nRows = rowCount();
 
-    vector<char> matches = matchRows(search, searchColumnIds, searchWhole, termIds, termTexts, termWhole);
+    vector<char> matches = matchRows(search, searchColumnIds, searchWhole, termIds, termTexts, termWhole, termPick, termLabels, termMissing);
 
     vector<int> rows;
     rows.reserve(nRows);
@@ -533,7 +557,7 @@ bool DataSetW::refreshViewOrder(const vector<int> &columnIds, const vector<bool>
     return setViewOrder(rows);
 }
 
-bool DataSetW::updateViewOrder(bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole)
+bool DataSetW::updateViewOrder(bool exFiltered, const string &search, const vector<int> &searchColumnIds, bool searchWhole, const vector<int> &termIds, const vector<string> &termTexts, const vector<bool> &termWhole, const vector<bool> &termPick, const vector<vector<string>> &termLabels, const vector<bool> &termMissing)
 {
     // rows remain where they're displayed; rows no longer displayed are
     // dropped, and newly displayed rows go last. rows edited so they no
@@ -559,7 +583,7 @@ bool DataSetW::updateViewOrder(bool exFiltered, const string &search, const vect
         }
     }
 
-    vector<char> matches = matchRows(search, searchColumnIds, searchWhole, termIds, termTexts, termWhole);
+    vector<char> matches = matchRows(search, searchColumnIds, searchWhole, termIds, termTexts, termWhole, termPick, termLabels, termMissing);
 
     for (int rowNo = 0; rowNo < nRows; rowNo++)
     {

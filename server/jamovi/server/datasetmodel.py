@@ -100,7 +100,7 @@ class DataSetModel:
         self._filters_visible = True
         self._sort_keys = [ ]
         self._search = None  # only for this session; not saved, nor undoable
-        self._search_terms: list[tuple[int, str, bool]] = [ ]  # likewise: (column id, text, whole cell), all must match
+        self._search_terms: list[tuple] = [ ]  # likewise: (column id, text, whole cell, ticked labels or None, missing ticked), all must match
         self._view_order_valid = False
         self._view_order_rebuild = True
         self._view_order_stale = False
@@ -229,12 +229,14 @@ class DataSetModel:
         return self._search is not None or len(self._search_terms) > 0
 
     @property
-    def search_terms(self) -> list[tuple[int, str, bool]]:
+    def search_terms(self) -> list[tuple]:
         return list(self._search_terms)
 
     @search_terms.setter
-    def search_terms(self, terms: list[tuple[int, str, bool]]):
-        self._search_terms = [ (int(column_id), text, bool(whole)) for column_id, text, whole in terms if text != '' ]
+    def search_terms(self, terms: list[tuple]):
+        # a text term needs text; a level list counts even with nothing ticked
+        self._search_terms = [ (int(term[0]), term[1], bool(term[2]), None if len(term) < 4 or term[3] is None else list(term[3]), len(term) > 4 and bool(term[4]))
+            for term in terms if term[1] != '' or (len(term) > 3 and term[3] is not None) ]
         self.invalidate_view_order()
 
     @property
@@ -253,6 +255,13 @@ class DataSetModel:
         rows, otherwise the rows displayed remain where they are"""
         self._view_order_valid = False
         self._view_order_rebuild = self._view_order_rebuild or rebuild
+
+    def count_levels(self, column_id: int) -> list[int]:
+        """each level's number of rows matching every search except the
+        column's own, in level order, then the rows with no value"""
+        terms = [ term for term in self._search_terms if term[0] != column_id ]
+        ex_filtered = self.ex_filtered and self.has_filters
+        return self._dataset.count_levels(column_id, ex_filtered, self._search, terms)
 
     def refresh_view_order(self) -> bool:
         """update the view order if invalidated; returns whether it changed"""

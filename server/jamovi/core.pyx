@@ -70,8 +70,9 @@ cdef extern from "datasetw.h":
         void deleteRows(int start, int end) except +
         void deleteColumns(int start, int end) except +
         void refreshFilterState() except +
-        bool refreshViewOrder(const vector[int] &columnIds, const vector[bool] &descending, bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole, const vector[int] &termIds, const vector[string] &termTexts, const vector[bool] &termWhole) except +
-        bool updateViewOrder(bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole, const vector[int] &termIds, const vector[string] &termTexts, const vector[bool] &termWhole) except +
+        bool refreshViewOrder(const vector[int] &columnIds, const vector[bool] &descending, bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole, const vector[int] &termIds, const vector[string] &termTexts, const vector[bool] &termWhole, const vector[bool] &termPick, const vector[vector[string]] &termLabels, const vector[bool] &termMissing) except +
+        vector[int] countLevels(int columnId, bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole, const vector[int] &termIds, const vector[string] &termTexts, const vector[bool] &termWhole, const vector[bool] &termPick, const vector[vector[string]] &termLabels, const vector[bool] &termMissing) except +
+        bool updateViewOrder(bool exFiltered, const string &search, const vector[int] &searchColumnIds, bool searchWhole, const vector[int] &termIds, const vector[string] &termTexts, const vector[bool] &termWhole, const vector[bool] &termPick, const vector[vector[string]] &termLabels, const vector[bool] &termMissing) except +
         bool isViewOrderSorted(const vector[int] &columnIds, const vector[bool] &descending) except +
         int viewRowCount() except +
         int getDataIndex(int viewRow) except +
@@ -86,6 +87,15 @@ cdef extern from "datasetw.h":
         bool isEdited() except +
         void setBlank(bool blank) except +
         bool isBlank() except +
+
+def _level_terms(terms):
+    # a term is (column id, text, whole cell), or with (labels, missing) after
+    # it for a level list: the ticked levels' labels, and whether blanks match
+    pick = [ len(term) > 3 and term[3] is not None for term in terms ]
+    labels = [ [ label.encode('utf-8') for label in term[3] ] if p else [ ] for term, p in zip(terms, pick) ]
+    missing = [ (True if p and term[4] else False) for term, p in zip(terms, pick) ]  # bool() here is C++'s
+    return pick, labels, missing
+
 
 class ColumnIterator:
     def __init__(self, dataset):
@@ -214,14 +224,24 @@ cdef class DataSet:
         term_ids = [ term[0] for term in terms ]
         term_texts = [ term[1].encode('utf-8') for term in terms ]
         term_whole = [ term[2] for term in terms ]
-        return self._this.refreshViewOrder(column_ids, descending, ex_filtered, text.encode('utf-8'), search_ids, whole, term_ids, term_texts, term_whole)
+        term_pick, term_labels, term_missing = _level_terms(terms)
+        return self._this.refreshViewOrder(column_ids, descending, ex_filtered, text.encode('utf-8'), search_ids, whole, term_ids, term_texts, term_whole, term_pick, term_labels, term_missing)
 
     def update_view_order(self, ex_filtered, search=None, terms=()):
         text, search_ids, whole = search or ('', [ ], False)
         term_ids = [ term[0] for term in terms ]
         term_texts = [ term[1].encode('utf-8') for term in terms ]
         term_whole = [ term[2] for term in terms ]
-        return self._this.updateViewOrder(ex_filtered, text.encode('utf-8'), search_ids, whole, term_ids, term_texts, term_whole)
+        term_pick, term_labels, term_missing = _level_terms(terms)
+        return self._this.updateViewOrder(ex_filtered, text.encode('utf-8'), search_ids, whole, term_ids, term_texts, term_whole, term_pick, term_labels, term_missing)
+
+    def count_levels(self, column_id, ex_filtered, search=None, terms=()):
+        text, search_ids, whole = search or ('', [ ], False)
+        term_ids = [ term[0] for term in terms ]
+        term_texts = [ term[1].encode('utf-8') for term in terms ]
+        term_whole = [ term[2] for term in terms ]
+        term_pick, term_labels, term_missing = _level_terms(terms)
+        return list(self._this.countLevels(column_id, ex_filtered, text.encode('utf-8'), search_ids, whole, term_ids, term_texts, term_whole, term_pick, term_labels, term_missing))
 
     def is_view_order_sorted(self, sort_keys):
         cdef vector[int] column_ids = [ column_id for column_id, _ in sort_keys ]

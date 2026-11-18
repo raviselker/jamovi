@@ -296,10 +296,19 @@ class DataSetController:
         search_pb = request.schema.search
         column_ids = [ column_id for column_id in search_pb.columnIds if column_id in ids ]
         self._data.search = (search_pb.text, column_ids, search_pb.whole)
-        self._data.search_terms = [ (term.columnId, term.text, term.whole) for term in search_pb.terms if term.columnId in ids ]
+        self._data.search_terms = [ (term.columnId, term.text, term.whole, list(term.labels) if term.levels else None, term.missing)
+            for term in search_pb.terms if term.columnId in ids ]
         changes['resort'] = True
 
     def _on_dataset_get(self, request, response):
+        if request.HasField('schema') and request.schema.HasField('search') and request.schema.search.countLevels:
+            column_id = request.schema.search.countColumnId
+            if any(column.id == column_id for column in self._data):
+                *counts, missing = self._data.count_levels(column_id)
+                response.schema.search.countLevels = True
+                response.schema.search.countColumnId = column_id
+                response.schema.search.levelCounts[:] = counts
+                response.schema.search.missingCount = missing
         if request.incSchema:
             self._populate_schema(request, response)
         if request.incData:
@@ -1639,11 +1648,15 @@ class DataSetController:
             schema.search.text = text
             schema.search.columnIds[:] = column_ids
             schema.search.whole = whole
-        for column_id, text, whole in self._data.search_terms:
+        for column_id, text, whole, labels, missing in self._data.search_terms:
             term_pb = schema.search.terms.add()
             term_pb.columnId = column_id
             term_pb.text = text
             term_pb.whole = whole
+            if labels is not None:
+                term_pb.levels = True
+                term_pb.labels[:] = labels
+                term_pb.missing = missing
         if self._data.is_searching:
             schema.search.matches = self._data.view_row_count
 

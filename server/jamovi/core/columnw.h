@@ -53,6 +53,8 @@ public:
 
     std::vector<double> sortKeys(bool descending);
     void searchRows(const std::string &text, bool whole, std::vector<char> &matches);
+    std::vector<int> countLevels(const std::vector<char> &include);
+    void pickRows(const std::vector<std::string> &labels, bool missing, std::vector<char> &matches);
 
     template<typename T> void setRowCount(size_t count)
     {

@@ -5,6 +5,7 @@ Server tests run with `docker compose --profile tests run --rm test -c "python3 
 ## 1. Protocol
 
 - [ ] 1.1 Add `sort` (`keys {columnId, descending}`, `stale`) and `search` (`ViewSearch {text, whole, matches, terms}` with `Term {columnId, text, whole}`, field 18) to `DataSetSchema` in `jamovi.proto`; verify that the server and client builds regenerate the bindings without errors
+- [ ] 1.2 Add `levels`, `labels` and `missing` to `Term`, and `countLevels`, `countColumnId`, `levelCounts` and `missingCount` to `ViewSearch` for the counts request; verify the bindings regenerate
 
 ## 2. View order in the core
 
@@ -13,6 +14,7 @@ Server tests run with `docker compose --profile tests run --rm test -c "python3 
 - [ ] 2.3 Add `ColumnW::searchRows` and `DataSetW::searchRows` (part or whole cell, ignoring ASCII case, decimals as displayed, a typed number matching a decimal whole at its shown places, level labels, missing never matches, all columns except filter and virtual); verify with tests for each of these cases, including one column and whole cell; add `DataSetW::matchRows` ANDing the per-column terms into the main search, with a test that two terms must both match
 - [ ] 2.4 Make `updateViewOrder` keep edited rows displayed and show appended rows; verify with a test that edits a matching row so it no longer matches and appends a row while searching
 - [ ] 2.5 Expose `refresh_view_order(sort_keys, ex_filtered, search, terms)`, `update_view_order(ex_filtered, search, terms)` and `is_view_order_sorted` in `core.pyx` (UTF-8 text); verify that `test_view_order_store.py` calls them through the Python API
+- [ ] 2.6 Match a level term by label (ticked levels, and missing when ticked), and count a level column's rows within every other search (`countLevels`); verify with tests for several levels, missing only, none ticked, and a level with no rows
 
 ## 3. Server model and requests
 
@@ -35,6 +37,7 @@ Server tests run with `docker compose --profile tests run --rm test -c "python3 
 - [ ] 5.3 Add the `search` and `searchColumn` actions ("Search in Column" with `menu-search-column.svg` in the context menus) and the ribbon toggle; replace the 250 ms focus timer with a focus hand-over in the interaction manager; verify that Search focuses the field on the first click
 - [ ] 5.4 Build the column search: the toggle with its badge, the row of boxes, each with its own Contains / Is exactly icon (aligned on resize, scroll, column changes and row-number width changes; focus kept while typing; cleared when hidden), the header and column tints, and the slide animation with still headers; verify the column search scenarios in the app, including slowed-down animation
 - [ ] 5.5 Add the dimming while a search runs and the match highlighting (whole cells only for Is exactly); drop terms for deleted columns; verify in the app
+- [ ] 5.6 Build the level list for nominal and ordinal columns: ticks with counts in level order, (Missing), the narrowing field with "Select these N", Select all and Clear, the box text ("All", "Europe +1" with a tooltip, "None"), updating with each tick; verify the picking scenarios in the app, with the keyboard, and at the window's right edge
 
 ## 6. Client: variables view
 

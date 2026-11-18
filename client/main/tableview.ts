@@ -14,9 +14,9 @@ import interactionManager from '../common/interactionmanager';
 import { h } from '../common/htmlelementcreator';
 
 import { s6e, contextMenuListener } from '../common/utils';
-import dropdown from './vareditor/dropdown';
+import dropdown, { type DropdownContent } from './vareditor/dropdown';
 import VariableList from './vareditor/variablelist';
-import DataSetViewModel, { Column, ColumnActiveChangedEvent, ColumnEvent, ColumnType, DataType, MeasureType, SortKey, Viewport } from './dataset';
+import DataSetViewModel, { Column, ColumnActiveChangedEvent, ColumnEvent, ColumnType, DataType, MeasureType, SearchTerm, SortKey, Viewport } from './dataset';
 import Selection, { IAreaSelection, ISelection } from './selection';
 import ViewController, { DataSetView } from './viewcontroller';
 import Settings from './settings';
@@ -81,6 +81,7 @@ class TableView extends HTMLElement implements DataSetView {
     _filtersShown = false;  // a box under each column header, for a term per column
     _terms = new Map<number, string>();  // column id to its term, as typed
     _termsWhole = new Set<number>();  // the column ids whose term matches the whole cell
+    _picks = new Map<number, { labels: Set<string>, missing: boolean }>();  // level columns with something unticked: what's ticked
     _searchRequest: number;
     _searchOpen = false;
     _searchWhole = false;
@@ -688,6 +689,9 @@ class TableView extends HTMLElement implements DataSetView {
                     this._terms.delete(columnId);
                     this._termsWhole.delete(columnId);
                 }
+            for (let columnId of [ ...this._picks.keys() ])
+                if ( ! this.model.getColumnById(columnId))
+                    this._picks.delete(columnId);
             if (document.activeElement !== this.$searchInput)
                 this.$searchInput.value = search.text;
             this._updateSearch();
@@ -722,8 +726,10 @@ class TableView extends HTMLElement implements DataSetView {
             this._setFiltersShown(true);
         this._updateSortBar();
         let $input = this.$filterRow.querySelector<HTMLInputElement>(`input[data-id="${ columnId }"]`);
+        let $levels = this.$filterRow.querySelector<HTMLElement>(`.jmv-filter-cell[data-id="${ columnId }"] .jmv-filter-levels`);
         // after the context menu has closed and handed the focus back
         setTimeout(() => {
+            $levels?.focus({ preventScroll: true });
             $input?.focus({ preventScroll: true });
             $input?.select();
         }, 0);
@@ -744,7 +750,9 @@ class TableView extends HTMLElement implements DataSetView {
         this._updateSearch();
         let text = this.$searchInput.value;
         let current = this.model.attributes.search;
-        let terms = [ ...this._terms ].filter(([ , term ]) => term !== '').map(([ columnId, term ]) => ({ columnId, text: term, whole: this._termsWhole.has(columnId) }));  // each box has its own 'ab'
+        let terms: SearchTerm[] = [ ...this._terms ].filter(([ , term ]) => term !== '').map(([ columnId, term ]) => ({ columnId, text: term, whole: this._termsWhole.has(columnId) }));  // each box has its own mode
+        for (let [ columnId, pick ] of this._picks)
+            terms.push({ columnId, text: '', whole: false, labels: [ ...pick.labels ], missing: pick.missing });
         if (text === '' && current.text === '' && terms.length === 0 && (current.terms ?? [ ]).length === 0) {
             this.classList.remove('search-pending');
             return;
@@ -847,7 +855,7 @@ class TableView extends HTMLElement implements DataSetView {
 
     _updateSearch() {
         this.$searchInput.placeholder = _('Search all columns');
-        let nTerms = [ ...this._terms.values() ].filter(term => term !== '').length;
+        let nTerms = [ ...this._terms.values() ].filter(term => term !== '').length + this._picks.size;
         this.$columnSearchButton.setAttribute('aria-pressed', this._filtersShown ? 'true' : 'false');
         this.$columnSearchButton.querySelector('.jmv-column-search-badge').textContent = nTerms > 0 ? String(nTerms) : '';
         this._setSearchMode(this._searchWhole);
@@ -3260,10 +3268,11 @@ class TableView extends HTMLElement implements DataSetView {
         this.style.gridTemplateRows = `auto ${ to }px 1fr 22px`;
         this.$header.style.height = `${ to }px`;
         this.classList.toggle('filters-shown', shown);
-        if ( ! shown && this._terms.size > 0) {
+        if ( ! shown && (this._terms.size > 0 || this._picks.size > 0)) {
             // hidden terms would search unseen
             this._terms.clear();
             this._termsWhole.clear();
+            this._picks.clear();
             for (let $input of this.$filterRow.querySelectorAll('input'))
                 $input.value = '';
             this._applySearch();
@@ -3289,7 +3298,7 @@ class TableView extends HTMLElement implements DataSetView {
             this._resizeHandler();
         };
         if (shown)
-            this.$filterRow.querySelector('input')?.focus({ preventScroll: true });
+            this.$filterRow.querySelector<HTMLElement>('input, .jmv-filter-levels')?.focus({ preventScroll: true });
     }
 
     _layoutFilterRow() {
@@ -3306,14 +3315,30 @@ class TableView extends HTMLElement implements DataSetView {
                 continue;
             let $cell = existing.get(column.id);
             existing.delete(column.id);
+            let kind = this._isLevelColumn(column) ? 'levels' : 'text';
+            if ($cell && $cell.dataset.kind !== kind) {
+                // the measure type changed: the box changes with it, and its search ends
+                let searched = this._terms.has(column.id) || this._picks.has(column.id);
+                this._terms.delete(column.id);
+                this._termsWhole.delete(column.id);
+                this._picks.delete(column.id);
+                $cell.remove();
+                $cell = undefined;
+                if (searched)
+                    setTimeout(() => this._applySearch(), 0);
+            }
             if ( ! $cell) {
-                $cell = this._createFilterBox(column.id);
+                $cell = kind === 'levels' ? this._createLevelBox(column.id) : this._createFilterBox(column.id);
                 this.$filterRow.append($cell);  // the others stay put: moving a box would take its focus
             }
             $cell.style.insetInlineStart = `${ this._lefts[column.dIndex] }px`;
             $cell.style.width = `${ this._widths[column.dIndex] }px`;
             $cell.style.top = `${ this._rowHeight }px`;
             $cell.style.height = `${ this._filterRowHeight }px`;
+            if (kind === 'levels') {
+                this._updateLevelBox($cell, column);
+                continue;
+            }
             let $input = $cell.querySelector('input');
             $input.setAttribute('aria-label', _('Search {0}', [ column.name ]));
             $input.placeholder = _('Search');
@@ -3347,6 +3372,169 @@ class TableView extends HTMLElement implements DataSetView {
         return { $mode, set };
     }
 
+    _isLevelColumn(column: Column): boolean {
+        // a column with no levels yet (new, empty) keeps the text box until it has some
+        return (column.measureType === MeasureType.NOMINAL || column.measureType === MeasureType.ORDINAL) && (column.levels?.length ?? 0) > 0;
+    }
+
+    _createLevelBox(columnId: number): HTMLElement {
+        // a level column's box: what's ticked, opening a list of the levels to tick
+        let $pick = h('button', { class: 'jmv-filter-levels', 'aria-haspopup': 'true', 'aria-expanded': 'false' },
+            h('span', { class: 'jmv-filter-levels-icon', 'aria-hidden': 'true' }),
+            h('span', { class: 'jmv-filter-levels-text' }),
+            h('span', { class: 'jmv-filter-levels-more' }));
+        let $cell = h('div', { class: 'jmv-filter-cell', 'data-id': String(columnId), 'data-kind': 'levels' }, h('div', { class: 'jmv-filter-field' }, $pick));
+        let toggle = () => {
+            if (dropdown.isVisible() === true && dropdown.focusedOn() === $pick)
+                dropdown.hide();
+            else
+                dropdown.show($pick, this._createLevelList(columnId, $cell));
+        };
+        // on press, not click: pressing moves focus out of an open list, which closes it,
+        // and the click would then open it again (as the sort bar's variable list does)
+        $pick.addEventListener('mousedown', (event) => {
+            event.preventDefault();
+            toggle();
+        });
+        $pick.addEventListener('click', (event) => {
+            if (event.detail === 0)  // Enter or Space
+                toggle();
+        });
+        $pick.addEventListener('keydown', (event) => {
+            event.stopPropagation();  // not the grid's
+            if (event.key === 'ArrowDown' && ! (dropdown.isVisible() === true && dropdown.focusedOn() === $pick)) {
+                event.preventDefault();
+                toggle();
+            }
+        });
+        for (let type of [ 'pointerdown', 'mousedown', 'click', 'dblclick', 'contextmenu' ])
+            $cell.addEventListener(type, event => event.stopPropagation());  // not selecting cells
+        return $cell;
+    }
+
+    _updateLevelBox($cell: HTMLElement, column: Column) {
+        // 'All', the first level ticked and '+N' for the rest, or 'None'
+        let pick = this._picks.get(column.id);
+        let ticked = pick ? column.levels.map(level => level.label).filter(label => pick.labels.has(label)) : [ ];
+        if (pick?.missing)
+            ticked.push(_('(Missing)'));
+        let $pick = $cell.querySelector<HTMLElement>('.jmv-filter-levels')!;
+        let text = ! pick ? _('All') : ticked.length === 0 ? _('None') : ticked[0];
+        $pick.querySelector('.jmv-filter-levels-text')!.textContent = text;
+        $pick.querySelector('.jmv-filter-levels-more')!.textContent = pick && ticked.length > 1 ? `+${ ticked.length - 1 }` : '';
+        $pick.title = pick ? ticked.join(', ') || _('None') : _('All');
+        $pick.setAttribute('aria-label', _('Levels of {0}: {1}', [ column.name, pick ? ticked.join(', ') || _('None') : _('All') ]));
+        $cell.classList.toggle('active', !! pick);
+    }
+
+    _createLevelList(columnId: number, $cell: HTMLElement): DropdownContent {
+        // the column's levels to tick, with how many rows each has
+        let column = this.model.getColumnById(columnId);
+        let levels = column.levels.map(level => level.label as string);
+
+        let $find = h('input', { class: 'jmv-level-list-find', spellcheck: 'false', autocomplete: 'off', placeholder: levels.length > 8 ? _('Search {0} levels', [ levels.length ]) : _('Search levels'), 'aria-label': _('Search the levels') }) as HTMLInputElement;
+        let $items = h('div', { class: 'jmv-level-list-items' });
+        let $hint = h('div', { class: 'jmv-level-list-hint' });
+        let $all = h('button', { class: 'jmv-level-list-action' });
+        let $clear = h('button', { class: 'jmv-level-list-action' }, _('Clear'));
+        let item = (label: string, text: string, missing = false) => {
+            let $box = h('input', { type: 'checkbox', 'data-label': label }) as HTMLInputElement;
+            if (missing)
+                $box.dataset.missing = '1';
+            let $item = h('label', { class: 'jmv-level-list-item' + (missing ? ' missing' : '') }, $box,
+                h('span', { class: 'jmv-level-list-label' }, text),
+                h('span', { class: 'jmv-level-list-count' }));
+            return $item;
+        };
+        let $levelItems = levels.map(label => item(label, label));
+        let $missing = item('', _('(Missing)'), true);
+        $items.append(...$levelItems);
+        let $missingGroup = h('div', { class: 'jmv-level-list-missing' }, h('div', { class: 'jmv-level-list-sep' }), $missing);
+        let $list = h('div', { class: 'jmv-level-list' }, $find, $items, $hint, $missingGroup,
+            h('div', { class: 'jmv-level-list-sep' }), h('div', { class: 'jmv-level-list-actions' }, $all, $clear)) as unknown as DropdownContent;
+        // the grid scrolling to the top on each tick isn't a reason to close
+        $list.isScrollTarget = (target) => target === $items || target === this.$container;
+
+        let boxes = () => [ ...$list.querySelectorAll<HTMLInputElement>('input[type=checkbox]') ];
+        let show = () => {
+            let pick = this._picks.get(columnId);
+            for (let $box of boxes())
+                $box.checked = ! pick || ($box.dataset.missing ? pick.missing : pick.labels.has($box.dataset.label ?? ''));
+        };
+        let set = (labels: Set<string>, missing: boolean) => {
+            // everything ticked is no search at all
+            if (missing && levels.every(label => labels.has(label)))
+                this._picks.delete(columnId);
+            else
+                this._picks.set(columnId, { labels, missing });
+            show();
+            this._updateLevelBox($cell, column);
+            this._updateSearch();
+            this._applySearch();
+        };
+        let shown = () => $levelItems.filter($item => ! $item.hidden);
+        let narrow = () => {
+            let text = $find.value.toLowerCase();
+            for (let [ i, $item ] of $levelItems.entries()) {
+                let at = text === '' ? 0 : levels[i].toLowerCase().indexOf(text);
+                $item.hidden = at === -1;
+                let $label = $item.querySelector('.jmv-level-list-label')!;
+                if (text === '' || at === -1)
+                    $label.textContent = levels[i];
+                else
+                    $label.replaceChildren(levels[i].slice(0, at), h('mark', { }, levels[i].slice(at, at + text.length)), levels[i].slice(at + text.length));
+            }
+            let n = shown().length;
+            $hint.textContent = text === '' ? '' : _('{0} of {1} levels', [ n, levels.length ]);
+            $hint.hidden = text === '';
+            $missingGroup.hidden = text !== '';
+            $all.textContent = text === '' ? _('Select all') : _('Select these {0}', [ n ]);
+        };
+        $items.addEventListener('change', (event) => {
+            let $box = event.target as HTMLInputElement;
+            let pick = this._picks.get(columnId);
+            let labels = new Set(pick ? pick.labels : levels);
+            if ($box.checked)
+                labels.add($box.dataset.label ?? '');
+            else
+                labels.delete($box.dataset.label ?? '');
+            set(labels, pick ? pick.missing : true);
+        });
+        $missing.addEventListener('change', () => {
+            let pick = this._picks.get(columnId);
+            set(new Set(pick ? pick.labels : levels), ($missing.querySelector('input') as HTMLInputElement).checked);
+        });
+        $all.addEventListener('click', () => {
+            if ($find.value === '')
+                set(new Set(levels), true);
+            else
+                set(new Set(shown().map($item => ($item.querySelector('input') as HTMLInputElement).dataset.label ?? '')), false);
+        });
+        $clear.addEventListener('click', () => set(new Set(), false));
+        $find.addEventListener('input', narrow);
+        $list.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape')  // back to the box, once the list has closed
+                setTimeout(() => $cell.querySelector<HTMLElement>('.jmv-filter-levels')?.focus({ preventScroll: true }), 0);
+            else if (event.key !== 'Tab')
+                event.stopPropagation();  // not the grid's
+        });
+        show();
+        narrow();
+        setTimeout(() => $find.focus({ preventScroll: true }), 0);
+
+        // the counts are within every other search (ticking here doesn't change them); a level none of those rows have is greyed
+        this.model.countLevels(columnId).then(({ counts, missing }) => {
+            for (let [ i, $item ] of [ ...$levelItems, $missing ].entries()) {
+                let count = i < $levelItems.length ? counts[i] : missing;
+                if (count === undefined)
+                    continue;
+                $item.querySelector('.jmv-level-list-count')!.textContent = String(count);
+                $item.classList.toggle('empty', count === 0);
+            }
+        }).catch(() => { });  // shortcut: no counts if the request fails; the list still works
+        return $list;
+    }
+
     _createFilterBox(columnId: number): HTMLElement {
         let $input = h('input', { class: 'jmv-filter-box jmv-search-field-input', 'data-id': String(columnId), spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
         let $clear = h('button', { class: 'jmv-search-field-clear', title: _('Clear'), 'aria-label': _('Clear'), tabindex: '-1' });
@@ -3359,7 +3547,7 @@ class TableView extends HTMLElement implements DataSetView {
             $input.focus({ preventScroll: true });
         }).$mode;
         let $field = h('div', { class: 'jmv-filter-field' }, $mode, $input, $clear);
-        let $cell = h('div', { class: 'jmv-filter-cell', 'data-id': String(columnId) }, $field);
+        let $cell = h('div', { class: 'jmv-filter-cell', 'data-id': String(columnId), 'data-kind': 'text' }, $field);
         $input.value = this._terms.get(columnId) ?? '';
         let timer: ReturnType<typeof setTimeout>;
         let update = () => $cell.classList.toggle('active', $input.value !== '');
