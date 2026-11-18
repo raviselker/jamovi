@@ -24,6 +24,10 @@ from .sessionfiles import SessionFiles
 
 from .exceptions import FileExistsException
 from .exceptions import UserException
+from .notifications import AutosaveFailedNotification
+from .notifications import AutosaveRecoveredNotification
+from .notifications import AutosaveStateNotification
+from .autosave import AutosaveRetry
 
 from .syncs import create_file_sync
 from .syncs import HttpSync
@@ -101,6 +105,7 @@ class Instance:
         self._last_autosaved = now
         self._autosaving = False
         self._edit_started: float | None = None
+        self._autosave_retry = AutosaveRetry()
 
         self._project.analyses.add_results_changed_listener(self._on_results)
         self._project.analyses.add_output_received_listener(self._on_output_received)
@@ -803,16 +808,46 @@ class Instance:
                 and not self._project.path.startswith('{{Temp}}')
                 and self._project.save_format == 'jamovi')
 
-    async def autosave(self):
+    async def autosave(self, final: bool = False):
+        # final: the instance is ending, and this is the last chance (see
+        # AutosaveRetry, which decides when a failed autosave is tried again)
         if self._autosaving or not self.needs_autosave():
             return
+        if not self._autosave_retry.may_try(monotonic(), final):
+            return
         self._autosaving = True
+        self.notify(AutosaveStateNotification('saving'))
         try:
-            await self.save({'path': self._project.path, 'overwrite': True})
+            await self.save({'path': self._project.path, 'overwrite': True, 'autosave': True})
+        except Exception as e:
+            self._autosave_failed(e)
+            self.notify(AutosaveStateNotification('failed', True, str(e)))
+        else:
             self._last_autosaved = monotonic()
             log.info('autosaved: %s', self._project.title[:16])
+            self.notify(AutosaveStateNotification('saved', self._project.is_edited))
         finally:
             self._autosaving = False
+
+    def _autosave_failed(self, error: Exception):
+        kind, tell = self._autosave_retry.failed(error, monotonic())
+        log.warning('autosave failed (%d in a row, retry %s): %s',
+                    self._autosave_retry.failures, kind, self._project.title[:16])
+        if not tell:
+            return
+        if kind == 'never':
+            title = _('Your changes are not being saved')
+        else:
+            title = _('Your changes are not being saved just now')
+        self.notify(AutosaveFailedNotification(title=title, message=str(error)))
+
+    def _autosave_settled(self):
+        # a save worked (an autosave, or one the user asked for): any
+        # failure is over
+        if self._autosave_retry.settled():
+            self.notify(AutosaveFailedNotification().dismiss())
+            self.notify(AutosaveRecoveredNotification(
+                title=_('Your changes are being saved again')))
 
     @progress_stream
     async def save(self, progress_cb: Callable[[tuple[int, int]], None], options) -> dict:
@@ -820,6 +855,7 @@ class Instance:
         path = options['path']
         trigger_download = False
         staging_path = None  # temp file when saving through a file sync
+        was_edited = False  # whether the project was edited as the save started
 
         try:
 
@@ -873,6 +909,15 @@ class Instance:
                     self.analyses.set_svgs(options['svgs'])
                 stream = self._on_save_everything(path, content, is_export)
 
+            if not is_export:
+                # what's saved is what's there as the save starts. an edit
+                # made while it's written or uploaded marks the project
+                # edited again, so it's saved by the next save, rather than
+                # being taken as saved by this one. if this one fails, the
+                # project is as edited as it was
+                was_edited = self._project.is_edited
+                self._project.is_edited = False
+
             async for progress in stream:
                 progress_cb((progress * multiplier, 1000))
 
@@ -906,8 +951,8 @@ class Instance:
                 self._project.title = title
                 self._project.path = options['path'] if trigger_download else path
                 self._project.save_format = 'jamovi'
-                self._project.is_edited = False
                 self._project.file_sync = file_sync
+                self._autosave_settled()
 
                 if not trigger_download:
                     self._add_to_recents(path, self._project.title)
@@ -924,7 +969,15 @@ class Instance:
 
         except Exception as e:
 
-            log.exception(e)
+            if was_edited:
+                self._project.is_edited = True
+
+            if options.get('autosave'):
+                # autosave says what happened, once, rather than a traceback
+                # for each retry (see AutosaveRetry)
+                log.debug('autosave: %s', e)
+            else:
+                log.exception(e)
 
             base    = os.path.basename(path)
             message = _('Unable to save {}').format(base)

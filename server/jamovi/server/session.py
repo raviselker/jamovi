@@ -411,7 +411,7 @@ class Session(dict):
 
                             if AUTOSAVE:
                                 try:
-                                    await instance.autosave()
+                                    await instance.autosave(final=True)
                                 except Exception as e:
                                     log.exception(e)
 

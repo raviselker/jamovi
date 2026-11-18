@@ -29,6 +29,7 @@ class Notify extends EventMap<NotifyData> {
         let title;
         let message;
         let values;
+        let type: NotifyData['type'] = 'info';
 
         if (status !== NOTIFICATION_DISMISS) {
             values = { };
@@ -52,6 +53,17 @@ class Notify extends EventMap<NotifyData> {
                     title = _('Approaching plan time limit');
                     message = sessionShutdownMessage(values.shutdownIn);
                     break;
+                case AUTOSAVE_FAILED:
+                    // the server says what happened, already translated
+                    title = pb.title;
+                    message = pb.message || null;
+                    type = 'error';
+                    break;
+                case AUTOSAVE_RECOVERED:
+                    title = pb.title;
+                    message = pb.message || null;
+                    type = 'success';
+                    break;
                 default:
                     title = _('Unexpected error');
                     message = 'Unknown event'; // not translated, because it will be
@@ -60,7 +72,7 @@ class Notify extends EventMap<NotifyData> {
             }
         }
 
-        return new Notify({ id, title, message, duration, dismissed });
+        return new Notify({ id, title, message, duration, dismissed, type });
     }
 
     constructor(args: Partial<NotifyData>) {
@@ -111,5 +123,7 @@ const NOTIFICATION_INDEFINITE = 2;
 const SESSION_SHUTDOWN_IDLE = 1;
 const SESSION_SHUTDOWN_MAINTENANCE = 2;
 const SESSION_SHUTDOWN_TIME_LIMIT = 3;
+const AUTOSAVE_FAILED = 4;
+const AUTOSAVE_RECOVERED = 5;
 
 export default Notify;

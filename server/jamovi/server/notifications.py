@@ -11,6 +11,9 @@ BOOL = ValueType.Value('BOOL')
 SESSION_SHUTDOWN_IDLE = 1
 SESSION_SHUTDOWN_MAINTENANCE = 2
 SESSION_SHUTDOWN_TIME_LIMIT = 3
+AUTOSAVE_FAILED = 4
+AUTOSAVE_RECOVERED = 5
+AUTOSAVE_STATE = 6
 
 
 class Notification:
@@ -19,10 +22,12 @@ class Notification:
     DISMISS = 1
     INDEFINITE = 2
 
-    def __init__(self, id, status=0, values={}):
+    def __init__(self, id, status=0, values={}, title='', message=''):
         self.id = id
         self.status = status
         self.values = values
+        self.title = title
+        self.message = message
 
     def dismiss(self):
         self.status = Notification.DISMISS
@@ -32,9 +37,17 @@ class Notification:
         pb = NotificationPB()
         pb.id = self.id
         pb.status = self.status
+        pb.title = self.title
+        pb.message = self.message
 
         for name, value in self.values.items():
-            if isinstance(value, int):
+            # bool first: a bool is an int too
+            if isinstance(value, bool):
+                v_pb = pb.values.add()
+                v_pb.name = name
+                v_pb.valueType = BOOL
+                v_pb.b = value
+            elif isinstance(value, int):
                 v_pb = pb.values.add()
                 v_pb.name = name
                 v_pb.valueType = INT
@@ -44,16 +57,11 @@ class Notification:
                 v_pb.name = name
                 v_pb.valueType = DOUBLE
                 v_pb.d = value
-            elif isinstance(value, string):
+            elif isinstance(value, str):
                 v_pb = pb.values.add()
                 v_pb.name = name
                 v_pb.valueType = STRING
                 v_pb.s = value
-            elif isinstance(value, bool):
-                v_pb = pb.values.add()
-                v_pb.name = name
-                v_pb.valueType = BOOL
-                v_pb.b = value
 
         return pb
 
@@ -79,3 +87,26 @@ class SessionShutdownMaintenanceNotification(SessionShutdownNotification):
 class SessionShutdownTimeLimitNotification(SessionShutdownNotification):
     def __init__(self, shutdown_in=None):
         super().__init__(SESSION_SHUTDOWN_TIME_LIMIT, shutdown_in)
+
+
+class AutosaveFailedNotification(Notification):
+    # shown until autosaving works again: the user's changes aren't being
+    # kept meanwhile
+    def __init__(self, title='', message=''):
+        super().__init__(AUTOSAVE_FAILED, Notification.INDEFINITE, title=title, message=message)
+
+
+class AutosaveRecoveredNotification(Notification):
+    def __init__(self, title='', message=''):
+        super().__init__(AUTOSAVE_RECOVERED, Notification.TRANSIENT, title=title, message=message)
+
+
+class AutosaveStateNotification(Notification):
+    # not shown: it tells the page how an autosave is going, for a
+    # deployment that shows the save state (the client's 'autosaveState'
+    # event). state is 'saving', 'saved' or 'failed'; edited, after 'saved',
+    # whether there are changes since, which the next autosave will save
+    def __init__(self, state: str, edited: bool = False, message: str = ''):
+        super().__init__(AUTOSAVE_STATE, Notification.TRANSIENT,
+                         values={ 'state': state, 'edited': edited },
+                         message=message)
