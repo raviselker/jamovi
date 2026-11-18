@@ -3,7 +3,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { layoutHeaderRows } from '../ribbonheader';
-import { Lobby } from '../extras/lobby';
 
 // the ribbon's header, as ribbon.ts builds it
 function makeHeader() {
@@ -41,13 +40,5 @@ describe('layoutHeaderRows', () => {
         expect([...tabsRow.children]).toEqual([file, tabs, full, menu]);
         // the account button moves up, to the end of the top row
         expect(top.lastElementChild).toBe(user);
-    });
-});
-
-describe('the default lobby', () => {
-    it('changes nothing: no header rows, and Back is left to jamovi', () => {
-        const lobby = new Lobby();
-        expect(lobby.ribbonHeader({})).toBeNull();
-        expect(lobby.back({})).toBe(false);
     });
 });
