@@ -246,11 +246,13 @@ if (window.navigator.platform === 'MacIntel') {
 
 // prevent back navigation. the app's url is pushed again whenever back is
 // pressed -- the app's, not whatever back went to, which is the url the
-// page was loaded at, before a data set was opened
+// page was loaded at, before a data set was opened. the lobby is told, and
+// may show something (lobby.back(): a home screen, say), over what's open
 let appUrl = document.URL;
 history.pushState(null, '', appUrl);
 window.addEventListener('popstate', function () {
     history.pushState(null, '', appUrl);
+    lobby.back(instance);
 });
 
 const highContrast = new HighContrast(document.body, document.body, () => {

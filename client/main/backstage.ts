@@ -23,7 +23,7 @@ import { IOpenOptions, ISaveOptions, IImportOptions, IBrowseOptions } from './ba
 import { FSEntryListModel, FSEntryListView, FSItemType } from './backstage/fsentry';
 
 import type { WDType, BackstagePanelView } from './backstage/fsentry';
-import type { IPlace } from './backstage/types';
+import type { IOp, IPlace } from './backstage/types';
 
 import { FSEntryBrowserView } from './backstage/fsentrybrowserview';
 import { h }  from '../common/htmlelementcreator';
@@ -43,13 +43,6 @@ type BackstageActivateOptions = {
 };
 
 
-interface IOp {
-    name: string,
-    title: string,
-    keyTipKey: string,
-    places?: IPlace[],
-    action?: () => any
-}
 
 interface IBackstageModel {
     activated : boolean,
@@ -374,6 +367,11 @@ export class BackstageModel extends EventMap<IBackstageModel> {
     }
 
     createOps(): IOp[] {
+        const ops = this._createOps();
+        return extras.adjustOps ? extras.adjustOps(ops) : ops;
+    }
+
+    _createOps(): IOp[] {
         const mode = this.instance.settings().getSetting('mode', 'normal');
 
         if (mode === 'cloud') {

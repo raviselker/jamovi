@@ -176,6 +176,10 @@ export type IModulesProvider = IModuleInteractions & ISettingsProvider & EventMa
 
 export type IBackstageSupport = IBackstageResources & ISettingsProvider & EventMap<IInstanceModel>;
 
+// the id of the server's notification of how an autosave is going
+// (notifications.py)
+const AUTOSAVE_STATE = 6;
+
 export class Instance extends EventMap<IInstanceModel> implements IBackstageSupport{
 
     _settings: Settings;
@@ -188,6 +192,11 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
     seqNo: number = 0;
     command: string = '';
     _analyses: Analyses;
+    // whether a save that goes as it should goes without a word: no progress
+    // or 'File Saved' notification (an export, or a failure, still has
+    // them). for a deployment that shows the save state some other way,
+    // listening for saveStarted and saveEnded
+    quietSaves: boolean = false;
 
     constructor(coms: Coms) {
         super({
@@ -714,8 +723,23 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
     }
 
     async save(options: ISaveOptions) {
+        const exporting = !! options.export;
+        this.trigger('saveStarted', { export: exporting });
+        try {
+            const result = await this._saveAndNotify(options);
+            this.trigger('saveEnded', { export: exporting, ok: true });
+            return result;
+        }
+        catch (e) {
+            this.trigger('saveEnded', { export: exporting, ok: false, error: e });
+            throw e;
+        }
+    }
+
+    async _saveAndNotify(options: ISaveOptions) {
 
         options = Object.assign({}, options); // clone so we can modify without side-effects
+        const quiet = this.quietSaves && ! options.export;
 
         if ( ! options.path) {
             // no path means a 'save' (rather than a 'save as')
@@ -741,7 +765,8 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
 
                 for await (const message of stream) {
                     progress.set('progress', message);
-                    this.trigger('notification', progress);
+                    if ( ! quiet)
+                        this.trigger('notification', progress);
                 }
 
                 const result = await stream;
@@ -759,7 +784,8 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
                     if (result.download)
                         return result;
 
-                    this._notify({ message: _('File Saved'), cause: _(`Saved to '{filename}'`, { filename }) });
+                    if ( ! quiet)
+                        this._notify({ message: _('File Saved'), cause: _(`Saved to '{filename}'`, { filename }) });
                 }
                 else {
                     if (result.download)
@@ -1369,6 +1395,22 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
             this.trigger('moduleUpdated', { name: moduleName });
         }*/
         else if (payloadType === 'Notification') {
+
+            if (response.id === AUTOSAVE_STATE) {
+                // how an autosave is going: not shown, but passed on, for a
+                // deployment that shows the save state (see quietSaves)
+                const values: { [name: string]: any } = { };
+                for (const valuePB of response.values)
+                    values[valuePB.name] = valuePB[valuePB.value];
+                if (values.state === 'saved' && ! values.edited)
+                    this._dataSetModel.set('edited', false);
+                this.trigger('autosaveState', {
+                    state: values.state,
+                    edited: !! values.edited,
+                    message: response.message || '',
+                });
+                return;
+            }
 
             let n10n = Notify.createFromPB(response);
             this.trigger('notification', n10n);
