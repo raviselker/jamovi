@@ -10,6 +10,10 @@ function makeHeader() {
     header.className = 'jmv-ribbon-header';
     const file = document.createElement('button');
     file.className = 'jmv-ribbon-tab file-tab';
+    file.setAttribute('aria-label', 'File');
+    const icon = document.createElement('span');
+    icon.className = 'mif-menu';
+    file.append(icon);
     const tabs = document.createElement('div');
     tabs.className = 'ribbon-tabs';
     const user = document.createElement('div');
@@ -51,5 +55,20 @@ describe('layoutHeaderRows', () => {
         expect(trailing.classList.contains('jmv-ribbon-header-trailing')).toBe(true);
         expect([...trailing.children]).toEqual([user]);
         expect(top.contains(user)).toBe(false);
+    });
+
+    it('keeps the File icon unless asked for its name', () => {
+        const { header, file } = makeHeader();
+        layoutHeaderRows(header, { leading: document.createElement('div'), top: document.createElement('div') });
+        expect(file.querySelector('.mif-menu')).not.toBeNull();
+        expect(file.classList.contains('file-tab-text')).toBe(false);
+    });
+
+    it("shows File's name, as its label says, in place of the icon when asked", () => {
+        const { header, file } = makeHeader();
+        layoutHeaderRows(header, { leading: document.createElement('div'), top: document.createElement('div'), fileAsText: true });
+        expect(file.querySelector('.mif-menu')).toBeNull();
+        expect(file.textContent).toBe('File');
+        expect(file.classList.contains('file-tab-text')).toBe(true);
     });
 });

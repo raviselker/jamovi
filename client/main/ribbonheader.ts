@@ -7,6 +7,8 @@
 export interface HeaderRows {
     leading: HTMLElement;
     top: HTMLElement;
+    // the File menu's button says "File" (its label), not the menu icon
+    fileAsText?: boolean;
 }
 
 // the header's own elements are moved, not copied: the ribbon keeps
@@ -27,6 +29,12 @@ export function layoutHeaderRows(header: HTMLElement, rows: HeaderRows): void {
     trailing.className = 'jmv-ribbon-header-trailing';
     if (user)
         trailing.append(user);
+
+    const file = tabsRow.querySelector<HTMLElement>(':scope > .file-tab');
+    if (rows.fileAsText && file) {
+        file.textContent = file.getAttribute('aria-label');
+        file.classList.add('file-tab-text');
+    }
 
     header.classList.add('jmv-ribbon-header-tworow');
     header.append(rows.leading, column, trailing);
