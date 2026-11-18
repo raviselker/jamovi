@@ -32,6 +32,7 @@ import './utils/headeralert';
 import type { HeaderAlert } from './utils/headeralert';
 
 import lobby, { hasLobby } from './extras/lobby';
+import { layoutHeaderRows } from './ribbonheader';
 import { InstanceOpenStream } from './instance';
 import { IInstanceOpenOptions } from './instance';
 import { IInstanceOpenResult } from './instance';
@@ -246,13 +247,14 @@ if (window.navigator.platform === 'MacIntel') {
 
 // prevent back navigation. the app's url is pushed again whenever back is
 // pressed -- the app's, not whatever back went to, which is the url the
-// page was loaded at, before a data set was opened. the lobby is told, and
-// may show something (lobby.back(): a home screen, say), over what's open
+// page was loaded at, before a data set was opened. the lobby is told first,
+// and may handle it itself (lobby.back(): a home screen, say, shown over
+// what's open, with its own url), in which case the url is left to it
 let appUrl = document.URL;
 history.pushState(null, '', appUrl);
 window.addEventListener('popstate', function () {
-    history.pushState(null, '', appUrl);
-    lobby.back(instance);
+    if ( ! lobby.back(instance))
+        history.pushState(null, '', appUrl);
 });
 
 const highContrast = new HighContrast(document.body, document.body, () => {
@@ -448,6 +450,9 @@ ready(async() => {
     };
 
     let ribbon = new Ribbon(ribbonModel);
+    const headerRows = lobby.ribbonHeader(instance);
+    if (headerRows)
+        layoutHeaderRows(ribbon.$header, headerRows);
     document.querySelector<HTMLElement>('.silky-ribbon').append(ribbon);
     //const backstageElement = document.querySelector('#backstage');
     let backstage = new Backstage(backstageModel);
