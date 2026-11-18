@@ -24,7 +24,7 @@ function makeHeader() {
 
 describe('layoutHeaderRows', () => {
     it('puts the leading slot first, and the top row above the tabs', () => {
-        const { header, file, tabs, user, full, menu } = makeHeader();
+        const { header, file, tabs, full, menu } = makeHeader();
         const leading = document.createElement('div');
         const top = document.createElement('div');
 
@@ -38,7 +38,18 @@ describe('layoutHeaderRows', () => {
         const tabsRow = column.children[1];
         expect(tabsRow.classList.contains('jmv-ribbon-header-tabs')).toBe(true);
         expect([...tabsRow.children]).toEqual([file, tabs, full, menu]);
-        // the account button moves up, to the end of the top row
-        expect(top.lastElementChild).toBe(user);
+    });
+
+    it('puts the account button last, in a slot of its own spanning both rows', () => {
+        const { header, user } = makeHeader();
+        const top = document.createElement('div');
+
+        layoutHeaderRows(header, { leading: document.createElement('div'), top });
+
+        expect(header.children.length).toBe(3);
+        const trailing = header.lastElementChild;
+        expect(trailing.classList.contains('jmv-ribbon-header-trailing')).toBe(true);
+        expect([...trailing.children]).toEqual([user]);
+        expect(top.contains(user)).toBe(false);
     });
 });

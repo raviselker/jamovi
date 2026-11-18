@@ -10,7 +10,8 @@ export interface HeaderRows {
 }
 
 // the header's own elements are moved, not copied: the ribbon keeps
-// references to them. the account button goes to the end of the top row
+// references to them. the account button goes last, in a slot of its own
+// spanning both rows, as the leading slot does at the start
 export function layoutHeaderRows(header: HTMLElement, rows: HeaderRows): void {
     const user = header.querySelector<HTMLElement>(':scope > #jmv-user-button');
 
@@ -18,13 +19,15 @@ export function layoutHeaderRows(header: HTMLElement, rows: HeaderRows): void {
     tabsRow.className = 'jmv-ribbon-header-tabs';
     tabsRow.append(...Array.from(header.children).filter(child => child !== user));
 
-    if (user)
-        rows.top.append(user);
-
     const column = document.createElement('div');
     column.className = 'jmv-ribbon-header-rows';
     column.append(rows.top, tabsRow);
 
+    const trailing = document.createElement('div');
+    trailing.className = 'jmv-ribbon-header-trailing';
+    if (user)
+        trailing.append(user);
+
     header.classList.add('jmv-ribbon-header-tworow');
-    header.append(rows.leading, column);
+    header.append(rows.leading, column, trailing);
 }

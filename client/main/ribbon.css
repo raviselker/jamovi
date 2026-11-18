@@ -31,6 +31,12 @@
     align-items: center;
 }
 
+.jmv-ribbon-header-trailing {
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+}
+
 .jmv-ribbon-menu {
     display: flex;
     flex-grow: 1;
