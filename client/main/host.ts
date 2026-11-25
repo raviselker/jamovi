@@ -280,6 +280,30 @@ export const showOpenDialog = etron.showOpenDialog || (async function(options) {
     if (showOpenDialog.cancelPrevious)
         showOpenDialog.cancelPrevious();
 
+    // where the browser has a file picker that takes named types (chrome and
+    // edge), each filter is offered on its own, as the desktop's dialog does;
+    // otherwise (firefox, safari) a file input takes them all as one, below
+    const picker = (window as any).showOpenFilePicker;
+    if (picker && options.filters && options.filters.length > 0 && os !== 'ios') {
+        try {
+            const handles = await picker({
+                multiple: !! options.multiple,
+                excludeAcceptAllOption: true,
+                types: options.filters.map((filter) => ({
+                    description: filter.name ?? filter.description,
+                    accept: { 'application/octet-stream': filter.extensions.map((ext) => '.' + ext) },
+                })),
+            });
+            const files = await Promise.all(handles.map((handle) => handle.getFile()));
+            return { cancelled: false, files };
+        }
+        catch (e) {
+            if (e?.name === 'AbortError')
+                return { cancelled: true };
+            // anything else (the picker isn't allowed here, say): the input
+        }
+    }
+
     let exts;
     // iOS safari and iOS chrome don't support the extension format
     // https://caniuse.com/input-file-accept
