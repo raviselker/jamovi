@@ -369,10 +369,14 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
 
     // refuses an upload that can't succeed, before any of it is sent. once a
     // browser starts sending a body the server has no way to stop it, so an
-    // upload refused by the server is an upload sent in full first
-    _checkUpload(files: Iterable<File | string>) {
+    // upload refused by the server is an upload sent in full first.
+    // needsConnection: the upload goes to the session the page is connected
+    // to, so a lost connection dooms it. not so an open before there's a
+    // session (a file uploaded from the lobby's home screen): the open starts
+    // the session itself, and there's nothing to be connected to yet
+    _checkUpload(files: Iterable<File | string>, needsConnection: boolean = true) {
 
-        if ( ! this.attributes.coms.connected)
+        if (needsConnection && ! this.attributes.coms.connected)
             throw new UserFacingError(_('Upload failed'), { cause: _('The connection to the session has been lost') });
 
         if (host.maxUploadMB === undefined)
@@ -476,7 +480,7 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
                 headers.append('X-Jamovi-Relocated', '1');
 
             if (options.file)
-                this._checkUpload([ options.file ]);
+                this._checkUpload([ options.file ], this._instanceId !== null);
 
             // 'no-session' means the cookies don't name a live session (and
             // they've been cleared). with an auth token (i.e. at boot) one is
