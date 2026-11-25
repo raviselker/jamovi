@@ -35,6 +35,7 @@ from .syncs import HttpSyncFileInfo
 
 import os
 import os.path
+import shutil
 import platform
 import posixpath
 import logging
@@ -850,7 +851,10 @@ class Instance:
                 title=_('Your changes are being saved again')))
 
     @progress_stream
-    async def save(self, progress_cb: Callable[[tuple[int, int]], None], options) -> dict:
+    async def save(self, progress_cb: Callable[[tuple[int, int]], None], options, source: str | None = None) -> dict:
+        # source: an .omv to save as it is, byte for byte, rather than one
+        # written from what's open (an upload, saved as it's opened: see
+        # open()'s keepIn). the server's own, never a client's
 
         path = options['path']
         trigger_download = False
@@ -907,7 +911,10 @@ class Instance:
                 is_export = options.get('export', False)
                 if 'svgs' in options:
                     self.analyses.set_svgs(options['svgs'])
-                stream = self._on_save_everything(path, content, is_export)
+                if source is not None and path.endswith('.omv') and not is_export:
+                    stream = self._copy_file(source, path)
+                else:
+                    stream = self._on_save_everything(path, content, is_export)
 
             if not is_export:
                 # what's saved is what's there as the save starts. an edit
@@ -1036,6 +1043,12 @@ class Instance:
         else:
             with open(path, 'wb') as file:
                 file.write(content)
+
+    async def _copy_file(self, source: str, path: str):
+        yield 0
+        ioloop = asyncio.get_event_loop()
+        await ioloop.run_in_executor(None, shutil.copyfile, source, path)
+        yield 1
 
     async def _on_save_everything(self, path, content, is_export):
 
@@ -1226,6 +1239,9 @@ class Instance:
             # success
             if path != '' and not is_temp:
                 self._add_to_recents(path, self._project.title)
+            keep_in = options.get('keepIn')
+            if isinstance(keep_in, dict) and file_sync is None:
+                await self._keep_in(keep_in, norm_path, ext)
             return result
         finally:
             self._opening = False
@@ -1241,6 +1257,29 @@ class Instance:
                     os.remove(norm_path)
                 except OSError as e:
                     log.warning("unable to remove '%s': %s", norm_path, e)
+
+    async def _keep_in(self, keep_in: dict, norm_path: str | None, ext: str | None):
+        # what's been opened (an upload, say) is saved straight away, where
+        # keepIn says (a project in My Projects, with its store options), as
+        # part of the open: an .omv as it is, byte for byte, anything else as
+        # an .omv written from what's open. the file's still here (it's
+        # removed once the open's done). if the save fails, the open still
+        # stands: what's open just isn't saved, and the client says so
+        if ext is None and norm_path is not None:
+            ext = os.path.splitext(norm_path)[1][1:]
+        source = norm_path if (ext or '').lower() == 'omv' else None
+        save_options = {
+            'path': keep_in.get('path'),
+            'overwrite': True,
+            'store': keep_in.get('store'),
+        }
+        try:
+            stream = self.save(save_options, source=source)
+            async for _ in stream:
+                pass
+            await stream
+        except Exception as e:
+            log.warning('keeping the opened file failed: %s', e)
 
     async def _on_open(self, request):
 
