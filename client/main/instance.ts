@@ -840,6 +840,8 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
     _save(options) {
 
         options = Object.assign({}, options); // clone so we can modify without side-effects
+        const serverOnly = !! options.serverOnly;
+        delete options.serverOnly;
 
         return new ProgressStream<[number, number], any>(async (setProgress) => {
 
@@ -849,7 +851,10 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
             let content = null;
             let svgs = null;
 
-            if (options.path.endsWith('.omv') && ! options.export) {
+            if (serverOnly) {
+                // the server writes it from what it has (see ISaveOptions)
+            }
+            else if (options.path.endsWith('.omv') && ! options.export) {
                 // an Svg element is stored as the svg it renders to, and only
                 // the results view can provide that
                 svgs = await this.attributes.resultsSupplier.getSvgs();
@@ -861,6 +866,9 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
             }
             else if (options.partType === 'image') {
                 // images are handled specially below
+            }
+            else if (serverOnly) {
+                // as above
             }
             else if (options.path.endsWith('.omv')) {
                 content = await this.attributes.resultsSupplier.getAsHTML({images:'relative', generator:app});

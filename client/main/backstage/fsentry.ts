@@ -32,6 +32,10 @@ export interface ISaveOptions {
     format?: string;
     username?: string;
     filename?: string;
+    // the .omv is written by the server alone, as an autosave is: without the
+    // results as rendered here (its index.html, and the svgs drawn here),
+    // which only the results view can give, once it has loaded
+    serverOnly?: boolean;
 }
 
 export interface IImportOptions {
