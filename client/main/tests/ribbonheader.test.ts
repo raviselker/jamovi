@@ -1,0 +1,74 @@
+// @vitest-environment jsdom
+
+import { describe, expect, it } from 'vitest';
+
+import { layoutHeaderRows } from '../ribbonheader';
+
+// the ribbon's header, as ribbon.ts builds it
+function makeHeader() {
+    const header = document.createElement('div');
+    header.className = 'jmv-ribbon-header';
+    const file = document.createElement('button');
+    file.className = 'jmv-ribbon-tab file-tab';
+    file.setAttribute('aria-label', 'File');
+    const icon = document.createElement('span');
+    icon.className = 'mif-menu';
+    file.append(icon);
+    const tabs = document.createElement('div');
+    tabs.className = 'ribbon-tabs';
+    const user = document.createElement('div');
+    user.id = 'jmv-user-button';
+    const full = document.createElement('button');
+    full.className = 'jmv-ribbon-fullscreen';
+    const menu = document.createElement('div');
+    menu.className = 'jmv-ribbon-menu';
+    header.append(file, tabs, user, full, menu);
+    return { header, file, tabs, user, full, menu };
+}
+
+describe('layoutHeaderRows', () => {
+    it('puts the leading slot first, and the top row above the tabs', () => {
+        const { header, file, tabs, full, menu } = makeHeader();
+        const leading = document.createElement('div');
+        const top = document.createElement('div');
+
+        layoutHeaderRows(header, { leading, top });
+
+        expect(header.classList.contains('jmv-ribbon-header-tworow')).toBe(true);
+        expect(header.firstElementChild).toBe(leading);
+        const column = header.children[1];
+        expect(column.classList.contains('jmv-ribbon-header-rows')).toBe(true);
+        expect(column.firstElementChild).toBe(top);
+        const tabsRow = column.children[1];
+        expect(tabsRow.classList.contains('jmv-ribbon-header-tabs')).toBe(true);
+        expect([...tabsRow.children]).toEqual([file, tabs, full, menu]);
+    });
+
+    it('puts the account button last, in a slot of its own spanning both rows', () => {
+        const { header, user } = makeHeader();
+        const top = document.createElement('div');
+
+        layoutHeaderRows(header, { leading: document.createElement('div'), top });
+
+        expect(header.children.length).toBe(3);
+        const trailing = header.lastElementChild;
+        expect(trailing.classList.contains('jmv-ribbon-header-trailing')).toBe(true);
+        expect([...trailing.children]).toEqual([user]);
+        expect(top.contains(user)).toBe(false);
+    });
+
+    it('keeps the File icon unless asked for its name', () => {
+        const { header, file } = makeHeader();
+        layoutHeaderRows(header, { leading: document.createElement('div'), top: document.createElement('div') });
+        expect(file.querySelector('.mif-menu')).not.toBeNull();
+        expect(file.classList.contains('file-tab-text')).toBe(false);
+    });
+
+    it("shows File's name, as its label says, in place of the icon when asked", () => {
+        const { header, file } = makeHeader();
+        layoutHeaderRows(header, { leading: document.createElement('div'), top: document.createElement('div'), fileAsText: true });
+        expect(file.querySelector('.mif-menu')).toBeNull();
+        expect(file.textContent).toBe('File');
+        expect(file.classList.contains('file-tab-text')).toBe(true);
+    });
+});

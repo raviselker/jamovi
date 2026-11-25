@@ -13,6 +13,30 @@
     padding-inline-end: 5px;
 }
 
+/* in two rows (ribbonheader.ts), when a deployment asks for it: a leading
+   slot spanning both, a row of its own on top, and the tabs below */
+.jmv-ribbon-header.jmv-ribbon-header-tworow {
+    align-items: stretch;
+}
+
+.jmv-ribbon-header-rows {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.jmv-ribbon-header-tabs {
+    display: flex;
+    align-items: center;
+}
+
+.jmv-ribbon-header-trailing {
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+}
+
 .jmv-ribbon-menu {
     display: flex;
     flex-grow: 1;
