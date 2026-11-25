@@ -581,6 +581,16 @@ export class Instance extends EventMap<IInstanceModel> implements IBackstageSupp
                     if (xhr.status === 204)
                         return { 'status': 'OK' };
 
+                    // a 200 is read as it streams (below); anything else is
+                    // read whole. the wait above ends with the headers, and
+                    // the body may not have arrived (firefox): a 'no-session'
+                    // read too soon looks like any other failure
+                    if (xhr.status !== 200 && xhr.readyState !== XMLHttpRequest.DONE) {
+                        await new Promise<void>((resolve) => {
+                            xhr.addEventListener('loadend', () => resolve(), { once: true });
+                        });
+                    }
+
                     if (xhr.status === 401 && isNoSession(xhr.responseText)) {
                         const result = await noSession();
                         if (result)
