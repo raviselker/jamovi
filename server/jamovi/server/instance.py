@@ -952,6 +952,9 @@ class Instance:
                 self._project.path = options['path'] if trigger_download else path
                 self._project.save_format = 'jamovi'
                 self._project.file_sync = file_sync
+                # saved, it's a file like any other, not a blank data set
+                # (which isn't autosaved, see needs_autosave)
+                self._project.is_blank = False
                 self._autosave_settled()
 
                 if not trigger_download:
